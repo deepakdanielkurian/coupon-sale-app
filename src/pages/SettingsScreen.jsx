@@ -249,7 +249,8 @@ export default function SettingsScreen({ onSubScreen }) {
       {/* ── Admin tools ── */}
       {can.viewLogs() && (
         <Section title="Admin tools">
-          <Row icon="ti-activity" iconBg="#f3e5f5" iconColor="#6a1b9a" label="Activity log" sub="All actions by all users" badge={`${logs?.length||0}`} onClick={()=>onSubScreen("logs")}/>
+          <Row icon="ti-activity"         iconBg="#f3e5f5" iconColor="#6a1b9a" label="Activity log"    sub="All actions by all users"       badge={`${logs?.length||0}`} onClick={()=>onSubScreen("logs")}/>
+          <Row icon="ti-database-export"  iconBg="#e3f2fd" iconColor="#1565c0" label="Backup & export" sub="Save & download data snapshots"                             onClick={()=>onSubScreen("backup")}/>
         </Section>
       )}
 
