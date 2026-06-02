@@ -1,10 +1,21 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import {
+  listenMembers, listenBooks, listenCollections,
+  addMember as fbAddMember, updateMember as fbUpdateMember, deleteMember as fbDeleteMember,
+  addBook as fbAddBook, updateBook as fbUpdateBook,
+  addCollection as fbAddCollection,
+  seedConfig, getConfig,
+} from "../firestoreService";
 import { initialData } from "./store";
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [data, setData] = useState(initialData);
+  const [members, setMembers] = useState([]);
+  const [books, setBooks] = useState([]);
+  const [collections, setCollections] = useState([]);
+  const [org, setOrg] = useState(initialData.org);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
   function showToast(msg, type = "success") {
@@ -12,53 +23,52 @@ export function AppProvider({ children }) {
     setTimeout(() => setToast(null), 3000);
   }
 
-  function addMember(member) {
-    setData(d => ({ ...d, members: [...d.members, member] }));
-    showToast("Member added successfully");
+  useEffect(() => {
+    // Seed org config & load it
+    seedConfig().then(() => getConfig().then(cfg => { if (cfg) setOrg(o => ({ ...o, ...cfg })); }));
+
+    // Real-time listeners
+    const unsubMembers = listenMembers(data => { setMembers(data); setLoading(false); });
+    const unsubBooks = listenBooks(data => setBooks(data));
+    const unsubCols = listenCollections(data => setCollections(data));
+
+    return () => { unsubMembers(); unsubBooks(); unsubCols(); };
+  }, []);
+
+  const data = { members, books, collections, org, coordinator: initialData.coordinator };
+
+  async function addMember(member) {
+    try { await fbAddMember(member); showToast("Member added successfully"); }
+    catch (e) { showToast("Failed to add member", "error"); }
   }
 
-  function updateMember(id, updates) {
-    setData(d => ({ ...d, members: d.members.map(m => m.id === id ? { ...m, ...updates } : m) }));
-    showToast("Member updated");
+  async function updateMember(id, updates) {
+    try { await fbUpdateMember(id, updates); showToast("Member updated"); }
+    catch (e) { showToast("Failed to update member", "error"); }
   }
 
-  function deleteMember(id) {
-    setData(d => ({ ...d, members: d.members.filter(m => m.id !== id) }));
-    showToast("Member removed");
+  async function deleteMember(id) {
+    try { await fbDeleteMember(id); showToast("Member removed"); }
+    catch (e) { showToast("Failed to delete member", "error"); }
   }
 
-  function addBook(book) {
-    setData(d => ({ ...d, books: [...d.books, book] }));
-    showToast(`Book ${book.bookNumber} assigned successfully`);
+  async function addBook(book) {
+    try { await fbAddBook(book); showToast(`Book ${book.bookNumber} assigned successfully`); }
+    catch (e) { showToast("Failed to assign book", "error"); }
   }
 
-  function updateBook(id, updates) {
-    setData(d => ({ ...d, books: d.books.map(b => b.id === id ? { ...b, ...updates } : b) }));
-    showToast("Book updated");
+  async function updateBook(id, updates) {
+    try { await fbUpdateBook(id, updates); showToast("Book updated"); }
+    catch (e) { showToast("Failed to update book", "error"); }
   }
 
-  function addCollection(col) {
-    setData(d => {
-      const newCols = [...d.collections, col];
-      // auto update book status
-      const book = d.books.find(b => b.id === col.bookId);
-      if (book) {
-        const bookCols = newCols.filter(c => c.bookId === col.bookId);
-        const totalSold = bookCols.reduce((s, c) => s + c.ticketsSold, 0);
-        const status = totalSold >= book.ticketCount ? "complete" : "ongoing";
-        return {
-          ...d,
-          collections: newCols,
-          books: d.books.map(b => b.id === col.bookId ? { ...b, status } : b),
-        };
-      }
-      return { ...d, collections: newCols };
-    });
-    showToast("Collection recorded");
+  async function addCollection(col) {
+    try { await fbAddCollection(col); showToast("Collection recorded"); }
+    catch (e) { showToast("Failed to save collection", "error"); }
   }
 
   return (
-    <AppContext.Provider value={{ data, addMember, updateMember, deleteMember, addBook, updateBook, addCollection, showToast, toast }}>
+    <AppContext.Provider value={{ data, loading, addMember, updateMember, deleteMember, addBook, updateBook, addCollection, showToast, toast }}>
       {children}
       {toast && (
         <div style={{
@@ -75,6 +85,4 @@ export function AppProvider({ children }) {
   );
 }
 
-export function useApp() {
-  return useContext(AppContext);
-}
+export function useApp() { return useContext(AppContext); }
