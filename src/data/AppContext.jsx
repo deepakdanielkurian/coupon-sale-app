@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
+
+const SESSION_KEY = "nbc_coupon_session";
 import {
   listenMembers, listenBooks, listenCollections, listenLogs,
   addMember as fbAdd, updateMember as fbUpdate, deleteMember as fbDelete,
@@ -24,7 +26,12 @@ export function AppProvider({ children }) {
   const [appUsers,   setAppUsers]   = useState([]);
   const [org,        setOrg]        = useState(DEFAULT_ORG);
   const [loading,    setLoading]    = useState(true);
-  const [currentUser,setCurrentUser]= useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [toast,      setToast]      = useState(null);
 
   function showToast(msg, type="success") {
@@ -39,17 +46,27 @@ export function AppProvider({ children }) {
     const u2 = listenBooks(setBooks);
     const u3 = listenCollections(setCollections);
     const u4 = listenLogs(setLogs);
-    const u5 = listenAppUsers(setAppUsers);
+    const u5 = listenAppUsers(users => {
+      setAppUsers(users);
+      // Keep session in sync if current user data changed
+      if (currentUser) {
+        const fresh = users.find(u => u.id === currentUser.id);
+        if (fresh) {
+          setCurrentUser(fresh);
+          localStorage.setItem(SESSION_KEY, JSON.stringify(fresh));
+        }
+      }
+    });
     return ()=>{u1();u2();u3();u4();u5();};
   },[]);
 
   // ── Auth ─────────────────────────────────────────────────
   function login(email, password) {
     const user = appUsers.find(u => u.email.toLowerCase()===email.toLowerCase() && u.password===password);
-    if (user) { setCurrentUser(user); return { success:true, user }; }
+    if (user) { setCurrentUser(user); localStorage.setItem(SESSION_KEY, JSON.stringify(user)); return { success:true, user }; }
     return { success:false, error:"Incorrect email or password" };
   }
-  function logout() { setCurrentUser(null); }
+  function logout() { setCurrentUser(null); localStorage.removeItem(SESSION_KEY); }
 
   // ── Activity log ─────────────────────────────────────────
   async function log(action, details) {
@@ -88,7 +105,7 @@ export function AppProvider({ children }) {
 
   // ── App users (super admin only) ──────────────────────────
   async function addUser(u)          { try{ const id=await fbAddUser(u); await log("CREATE_USER",`Created user ${u.email} (${u.role})`); showToast(`${u.name} created`); }  catch(e){ showToast("Failed","error"); } }
-  async function updateUser(id,u)    { try{ await fbUpdateUser(id,u);  await log("EDIT_USER",    `Updated user ${id}`);                  showToast("User updated"); }        catch(e){ showToast("Failed","error"); } }
+  async function updateUser(id,u)    { try{ await fbUpdateUser(id,u); if(currentUser&&id===currentUser.id){ const updated={...currentUser,...u}; setCurrentUser(updated); localStorage.setItem(SESSION_KEY,JSON.stringify(updated)); } await log("EDIT_USER",`Updated user ${id}`); showToast("User updated"); } catch(e){ showToast("Failed","error"); } }
   async function deleteUser(id)      { try{ await fbDeleteUser(id);    await log("DELETE_USER",  `Deleted user ${id}`);                  showToast("User removed"); }        catch(e){ showToast("Failed","error"); } }
 
   return (
