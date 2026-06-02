@@ -292,6 +292,7 @@ export function generateCombinedPDF(selectedIds, data) {
     pending:   { title:"Pending / Defaulters Report",  fn:addPending,   subtitle:"Members with outstanding balance" },
     inventory: { title:"Book Inventory Report",        fn:addInventory, subtitle:"All 500 books — A/B/C series" },
     history:   { title:"Collection History Report",    fn:addHistory,   subtitle:"All payment entries chronologically" },
+    common:    { title:"Common Ticket Sales Report",   fn:addCommonTickets, subtitle:"Coordinator common books buyer-wise ticket details" },
   };
 
   selectedIds.forEach((id, idx) => {
@@ -330,4 +331,69 @@ export function printPDF(doc) {
     // Fallback: open in same tab
     window.location.href = url;
   }
+}
+
+// ── COMMON TICKETS REPORT ─────────────────────────────────────
+export function addCommonTickets(doc, data, startY) {
+  const { books, collections } = data;
+  const w = pageW(doc); let y = startY;
+
+  const commonBooks = books.filter(b => b.isCommon);
+  const commonCols  = collections.filter(c => {
+    const book = books.find(b => b.id === c.bookId);
+    return book?.isCommon;
+  });
+  const totalAmt    = commonCols.reduce((s,c) => s+(c.amount||0), 0);
+  const totalTickets= commonCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
+
+  const bw=(w-28-6)/3;
+  statBox(doc,14,y,bw,"Common books",commonBooks.length);
+  statBox(doc,14+bw+3,y,bw,"Tickets sold",totalTickets,GREEN);
+  statBox(doc,14+(bw+3)*2,y,bw,"Total collected",fmt(totalAmt),GREEN);
+  y+=26;
+
+  if (commonCols.length===0) {
+    doc.setTextColor(...MUTED); doc.setFontSize(10);
+    doc.text("No common ticket sales recorded yet.",14,y+8);
+    return y+20;
+  }
+
+  y = secTitle(doc,"Common ticket sales — individual buyer details",y);
+
+  // Flatten all ticket entries with buyer names
+  const rows = [];
+  commonCols.forEach(col => {
+    const book = books.find(b=>b.id===col.bookId);
+    if (col.ticketEntries && col.ticketEntries.length>0) {
+      col.ticketEntries.forEach(entry => {
+        rows.push([
+          col.date,
+          book?.bookNumber||"—",
+          entry.ticketNo,
+          entry.buyerName||"—",
+          fmt(entry.amount||1000),
+          (col.paymentMode||"cash").toUpperCase(),
+        ]);
+      });
+    } else {
+      // Legacy entry without ticketEntries
+      rows.push([
+        col.date,
+        book?.bookNumber||"—",
+        "—",
+        "—",
+        fmt(col.amount),
+        (col.paymentMode||"cash").toUpperCase(),
+      ]);
+    }
+  });
+
+  autoTable(doc,{
+    startY:y,...TABLE_STYLES,
+    head:[["Date","Book","Ticket No.","Buyer Name","Amount","Mode"]],
+    body:rows,
+    columnStyles:{ 4:{textColor:GREEN} },
+  });
+  y = doc.lastAutoTable.finalY+8;
+  return grandBox(doc,y,"Total common ticket sales",fmt(totalAmt));
 }

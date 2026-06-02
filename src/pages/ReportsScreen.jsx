@@ -14,6 +14,7 @@ const REPORT_DEFS = [
   { id:"pending",   title:"Pending / Defaulters",        sub:"Members with outstanding balance",                   icon:"ti-alert-triangle", iconBg:"#FCEBEB",color:"#A32D2D",pages:"~1 page",   tags:["Overdue members","Amount","Contact"] },
   { id:"inventory", title:"Book Inventory Report",       sub:"All 500 books · A/B/C series · issued vs available", icon:"ti-books",          iconBg:"#EEEDFE",color:"#3C3489",pages:"~2 pages",  tags:["500 books","Series","Return status"] },
   { id:"history",   title:"Collection History",          sub:"All cash entries · date-wise · payment mode",        icon:"ti-calendar",       iconBg:"#EAF3DE",color:"#3B6D11",pages:"~5 pages",  tags:["All entries","Cash/UPI/Bank","Running total"] },
+  { id:"common",    title:"Common Ticket Sales",         sub:"Coordinator common books · each ticket with buyer name", icon:"ti-pool",           iconBg:"#f3e5f5",color:"#4a148c",pages:"~2 pages",  tags:["Common books","Ticket numbers","Buyer names"] },
 ];
 
 function ReportPreview({ reportId, data }) {
@@ -219,6 +220,62 @@ function ReportPreview({ reportId, data }) {
           );
         })}
         <TotalBar label="Total collected" value={fmt(sorted.reduce((s,c)=>s+(c.amount||0),0))}/>
+      </div>
+    );
+  }
+  if (reportId==="common") {
+    const commonBooks = books.filter(b=>b.isCommon);
+    const commonCols  = collections.filter(c=>{ const b=books.find(x=>x.id===c.bookId); return b?.isCommon; });
+    const totalAmt    = commonCols.reduce((s,c)=>s+(c.amount||0),0);
+    const totalTickets= commonCols.reduce((s,c)=>s+(c.ticketsSold||0),0);
+    return (
+      <div>
+        <Hdr/>
+        <div style={{background:"#f3e5f5",borderRadius:10,padding:"12px 14px",marginBottom:10,border:"1px solid #ce93d830"}}>
+          <div style={{fontSize:10,color:"#7b1fa2",marginBottom:4}}>Common ticket sales — coordinator managed</div>
+          <div style={{fontSize:22,fontWeight:700,color:"#4a148c"}}>{fmt(totalAmt)}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:8}}>
+            {[["Common books",commonBooks.length],["Tickets sold",totalTickets]].map(([l,v])=>(
+              <div key={l} style={{background:"rgba(255,255,255,0.7)",borderRadius:7,padding:"6px 8px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#888"}}>{l}</div>
+                <div style={{fontSize:14,fontWeight:700,color:"#4a148c"}}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <SectionLabel>Ticket-wise buyer details</SectionLabel>
+        {commonCols.length===0
+          ?<div style={{textAlign:"center",color:"#aaa",fontSize:12,padding:"20px 0"}}>No common ticket sales yet</div>
+          :commonCols.map(col=>{
+            const book=books.find(b=>b.id===col.bookId);
+            return(
+              <div key={col.id} style={{background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#1a1a1a"}}>Book {book?.bookNumber||"—"} · {col.date}</div>
+                    <div style={{fontSize:10,color:"#888"}}>{col.ticketsSold} ticket{col.ticketsSold!==1?"s":""} · {(col.paymentMode||"cash").toUpperCase()}</div>
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#4a148c"}}>{fmt(col.amount)}</div>
+                </div>
+                {col.ticketEntries&&col.ticketEntries.length>0&&(
+                  <div>
+                    <div style={{fontSize:10,fontWeight:700,color:"#7b1fa2",marginBottom:5}}>Ticket details</div>
+                    {col.ticketEntries.map((e,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 0",borderBottom:"0.5px solid #f5f5f5",fontSize:11}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{background:"#f3e5f5",color:"#4a148c",fontWeight:700,fontSize:10,padding:"2px 6px",borderRadius:5}}>#{e.ticketNo}</span>
+                          <span style={{color:"#1a1a1a",fontWeight:600}}>{e.buyerName}</span>
+                        </div>
+                        <span style={{color:"#1a6b3c",fontWeight:700}}>{fmt(e.amount||1000)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        }
+        <TotalBar label="Total common ticket sales" value={fmt(totalAmt)}/>
       </div>
     );
   }
