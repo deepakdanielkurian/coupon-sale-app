@@ -1,121 +1,48 @@
-import {
-  collection, doc, getDocs, getDoc,
-  addDoc, setDoc, updateDoc, deleteDoc,
-  query, orderBy, onSnapshot, serverTimestamp,
-} from "firebase/firestore";
+import { collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
-// ── Collections ──────────────────────────────────────────
-const MEMBERS = "members";
-const BOOKS = "books";
-const COLLECTIONS = "collections";
-const CONFIG = "config";
+const C = { MEMBERS:"members", BOOKS:"books", COLLECTIONS:"collections", CONFIG:"config", LOGS:"activity_logs" };
 
-// ── Seed initial org config if missing ───────────────────
 export async function seedConfig() {
-  const ref = doc(db, CONFIG, "org");
+  const ref = doc(db, C.CONFIG, "org");
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    await setDoc(ref, {
-      name: "Niranam Chudan Vallasamithi & NBC",
-      reg: "Reg. PTM/TC/105/2022",
-      event: "Mega Lucky Draw 2026",
-      grandPrize: "Maruti Suzuki Wagon R",
-      sponsor: "KGA Mall Changanassery",
-      ticketPrice: 1000,
-      createdAt: serverTimestamp(),
-    });
+    await setDoc(ref, { name:"Niranam Chudan Vallasamithi & NBC", reg:"Reg. PTM/TC/105/2022", event:"Mega Lucky Draw 2026", ticketPrice:1000, createdAt:serverTimestamp() });
   }
 }
+export async function getConfig() { const s = await getDoc(doc(db,C.CONFIG,"org")); return s.exists()?s.data():null; }
 
-// ── Members ───────────────────────────────────────────────
-export async function getMembers() {
-  const snap = await getDocs(query(collection(db, MEMBERS), orderBy("createdAt", "asc")));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
+// Members
+export async function getMembers() { const s=await getDocs(query(collection(db,C.MEMBERS),orderBy("createdAt","asc"))); return s.docs.map(d=>({id:d.id,...d.data()})); }
+export async function addMember(data) { return (await addDoc(collection(db,C.MEMBERS),{...data,createdAt:serverTimestamp()})).id; }
+export async function updateMember(id,data) { await updateDoc(doc(db,C.MEMBERS,id),{...data,updatedAt:serverTimestamp()}); }
+export async function deleteMember(id) { await deleteDoc(doc(db,C.MEMBERS,id)); }
 
-export async function addMember(data) {
-  const ref = await addDoc(collection(db, MEMBERS), {
-    ...data,
-    createdAt: serverTimestamp(),
-  });
-  return ref.id;
-}
+// Books
+export async function getBooks() { const s=await getDocs(query(collection(db,C.BOOKS),orderBy("createdAt","asc"))); return s.docs.map(d=>({id:d.id,...d.data()})); }
+export async function addBook(data) { return (await addDoc(collection(db,C.BOOKS),{...data,status:"not_started",createdAt:serverTimestamp()})).id; }
+export async function updateBook(id,data) { await updateDoc(doc(db,C.BOOKS,id),{...data,updatedAt:serverTimestamp()}); }
 
-export async function updateMember(id, data) {
-  await updateDoc(doc(db, MEMBERS, id), { ...data, updatedAt: serverTimestamp() });
-}
-
-export async function deleteMember(id) {
-  await deleteDoc(doc(db, MEMBERS, id));
-}
-
-// ── Books ─────────────────────────────────────────────────
-export async function getBooks() {
-  const snap = await getDocs(query(collection(db, BOOKS), orderBy("createdAt", "asc")));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-export async function addBook(data) {
-  const ref = await addDoc(collection(db, BOOKS), {
-    ...data,
-    status: "not_started",
-    createdAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-export async function updateBook(id, data) {
-  await updateDoc(doc(db, BOOKS, id), { ...data, updatedAt: serverTimestamp() });
-}
-
-// ── Collections (payments) ────────────────────────────────
-export async function getCollections() {
-  const snap = await getDocs(query(collection(db, COLLECTIONS), orderBy("createdAt", "asc")));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
+// Collections
 export async function addCollection(data) {
-  const ref = await addDoc(collection(db, COLLECTIONS), {
-    ...data,
-    createdAt: serverTimestamp(),
-  });
-  // Auto-update book status
-  const bookSnap = await getDoc(doc(db, BOOKS, data.bookId));
+  const ref = await addDoc(collection(db,C.COLLECTIONS),{...data,createdAt:serverTimestamp()});
+  const bookSnap = await getDoc(doc(db,C.BOOKS,data.bookId));
   if (bookSnap.exists()) {
     const book = bookSnap.data();
-    const allCols = await getDocs(query(collection(db, COLLECTIONS)));
-    const bookCols = allCols.docs
-      .filter(d => d.data().bookId === data.bookId)
-      .map(d => d.data());
-    const totalSold = bookCols.reduce((s, c) => s + (c.ticketsSold || 0), 0) + data.ticketsSold;
-    const status = totalSold >= book.ticketCount ? "complete" : "ongoing";
-    await updateDoc(doc(db, BOOKS, data.bookId), { status, updatedAt: serverTimestamp() });
+    const allC = await getDocs(collection(db,C.COLLECTIONS));
+    const bookCols = allC.docs.filter(d=>d.data().bookId===data.bookId).map(d=>d.data());
+    const totalSold = bookCols.reduce((s,c)=>s+(c.ticketsSold||0),0)+data.ticketsSold;
+    const status = (totalSold>=book.ticketCount||data.bookCompleted)?"complete":"ongoing";
+    await updateDoc(doc(db,C.BOOKS,data.bookId),{status,updatedAt:serverTimestamp()});
   }
   return ref.id;
 }
 
-// ── Config ────────────────────────────────────────────────
-export async function getConfig() {
-  const snap = await getDoc(doc(db, CONFIG, "org"));
-  return snap.exists() ? snap.data() : null;
-}
+// Activity logs
+export async function addLog(data) { await addDoc(collection(db,C.LOGS),{...data,createdAt:serverTimestamp()}); }
 
-// ── Real-time listeners ───────────────────────────────────
-export function listenMembers(callback) {
-  return onSnapshot(query(collection(db, MEMBERS), orderBy("createdAt", "asc")), snap => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
-}
-
-export function listenBooks(callback) {
-  return onSnapshot(query(collection(db, BOOKS), orderBy("createdAt", "asc")), snap => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
-}
-
-export function listenCollections(callback) {
-  return onSnapshot(query(collection(db, COLLECTIONS), orderBy("createdAt", "asc")), snap => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
-}
+// Listeners
+export function listenMembers(cb) { return onSnapshot(query(collection(db,C.MEMBERS),orderBy("createdAt","asc")),s=>cb(s.docs.map(d=>({id:d.id,...d.data()})))); }
+export function listenBooks(cb)   { return onSnapshot(query(collection(db,C.BOOKS),  orderBy("createdAt","asc")),s=>cb(s.docs.map(d=>({id:d.id,...d.data()})))); }
+export function listenCollections(cb){ return onSnapshot(query(collection(db,C.COLLECTIONS),orderBy("createdAt","asc")),s=>cb(s.docs.map(d=>({id:d.id,...d.data()})))); }
+export function listenLogs(cb)    { return onSnapshot(query(collection(db,C.LOGS),   orderBy("createdAt","desc")),s=>cb(s.docs.map(d=>({id:d.id,...d.data()})))); }

@@ -1,88 +1,113 @@
 import { useApp } from "../data/AppContext";
-import { fmt } from "../components/UI";
+import { ROLES } from "../data/store";
+import { fmt } from "../data/store";
 
-const RED = "#8B0000", GOLD = "#FFD700";
+const GREEN="#1a6b3c";
 
-export default function SettingsScreen() {
-  const { data, showToast } = useApp();
+export default function SettingsScreen({ onNavigate }) {
+  const { data, currentUser, can, logout, showToast } = useApp();
   const { org, books, collections, members } = data;
-  const totalCollected = collections.reduce((s, c) => s + c.amount, 0);
+  const roleInfo = ROLES[currentUser?.role]||ROLES.viewer;
+  const totalC = collections.reduce((s,c)=>s+(c.amount||0),0);
+
+  function Section({ title, children }) {
+    return (
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:10,color:"#888",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:7,paddingLeft:2}}>{title}</div>
+        <div style={{background:"#fff",borderRadius:12,border:"1px solid #eee",overflow:"hidden"}}>
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  function Row({ icon, iconBg, iconColor="#1a6b3c", label, value, onClick, danger }) {
+    return (
+      <div onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"1px solid #f5f5f5",cursor:onClick?"pointer":"default",background:danger?"#fff5f5":"transparent"}} >
+        <div style={{width:32,height:32,borderRadius:8,background:iconBg||"#e8f5ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <i className={`ti ${icon}`} style={{color:iconColor,fontSize:15}}/>
+        </div>
+        <span style={{flex:1,fontSize:13,color:danger?"#dc2626":"#1a1a1a",fontWeight:500}}>{label}</span>
+        {value&&<span style={{fontSize:12,color:"#aaa"}}>{value}</span>}
+        {onClick&&<i className="ti ti-chevron-right" style={{color:"#ccc",fontSize:14}}/>}
+      </div>
+    );
+  }
 
   return (
-    <div style={{ background: "#f7f4f0", flex: 1, overflowY: "auto", padding: "10px 10px 14px" }}>
+    <div style={{background:"#f5f7f5",padding:"10px 12px 20px"}}>
 
-      {/* Org card */}
-      <div style={{ background: RED, borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Organization</div>
-        <div style={{ fontSize: 14, fontWeight: 500, color: "#fff" }}>{org.name}</div>
-        <div style={{ fontSize: 10, color: GOLD, marginTop: 3 }}>{org.reg}</div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>{org.event}</div>
-        <div style={{ marginTop: 10, background: "rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)" }}>Grand prize</div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "#fff" }}>{org.grandPrize}</div>
-            <div style={{ fontSize: 10, color: GOLD }}>{org.sponsor}</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)" }}>Ticket price</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: GOLD }}>₹1,000</div>
-          </div>
+      {/* Profile card */}
+      <div style={{background:`linear-gradient(135deg,${GREEN},#2e7d32)`,borderRadius:14,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:12}}>
+        <div style={{width:48,height:48,borderRadius:14,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:22,fontWeight:700,flexShrink:0}}>
+          {currentUser?.name?.[0]||"?"}
         </div>
+        <div style={{flex:1}}>
+          <div style={{color:"#fff",fontSize:15,fontWeight:700}}>{currentUser?.name}</div>
+          <div style={{color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:2}}>{currentUser?.email}</div>
+        </div>
+        <div style={{background:"rgba(255,255,255,0.2)",borderRadius:8,padding:"4px 10px",color:"#fff",fontSize:11,fontWeight:700}}>{roleInfo.label}</div>
       </div>
 
       {/* Quick stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12 }}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:14}}>
         {[
-          ["Total collected", fmt(totalCollected), "#3B6D11"],
-          ["Members", members.length, "#2C2C2A"],
-          ["Books issued", books.length, "#2C2C2A"],
-          ["Books complete", books.filter(b => b.status === "complete").length, "#3B6D11"],
-        ].map(([l, v, c]) => (
-          <div key={l} style={{ background: "#fff", borderRadius: 8, border: "0.5px solid rgba(0,0,0,0.08)", padding: "8px 10px" }}>
-            <div style={{ fontSize: 10, color: "#888780" }}>{l}</div>
-            <div style={{ fontSize: 17, fontWeight: 500, color: c }}>{v}</div>
+          {l:"Total collected",v:fmt(totalC),c:GREEN},
+          {l:"Members",v:members.length,c:"#1a1a1a"},
+          {l:"Books assigned",v:`${books.length}/500`,c:"#1a1a1a"},
+          {l:"Books complete",v:books.filter(b=>b.status==="complete").length,c:GREEN},
+        ].map((s,i)=>(
+          <div key={i} style={{background:"#fff",borderRadius:9,border:"1px solid #eee",padding:"9px 10px"}}>
+            <div style={{fontSize:10,color:"#aaa"}}>{s.l}</div>
+            <div style={{fontSize:16,fontWeight:700,color:s.c,marginTop:2}}>{s.v}</div>
           </div>
         ))}
       </div>
 
-      {/* App info */}
-      {[
-        { section: "App", items: [
-          { icon: "ti-info-circle", label: "App version", value: "v1.0.0" },
-          { icon: "ti-building-community", label: "Organization", value: org.name },
-          { icon: "ti-user-shield", label: "Role", value: "Super Admin (Coordinator)" },
-        ]},
-        { section: "Data", items: [
-          { icon: "ti-users", label: "Total members", value: members.length },
-          { icon: "ti-ticket", label: "Total books", value: books.length },
-          { icon: "ti-cash", label: "Ticket price", value: "₹1,000 (fixed)" },
-        ]},
-        { section: "Actions", items: [
-          { icon: "ti-download", label: "Export all data", action: () => showToast("Data exported") },
-          { icon: "ti-file-text", label: "Download all reports", action: () => showToast("All reports downloaded") },
-          { icon: "ti-refresh", label: "Refresh data", action: () => showToast("Data refreshed") },
-        ]},
-      ].map(group => (
-        <div key={group.section} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: "#854F0B", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>{group.section}</div>
-          <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid rgba(0,0,0,0.08)", overflow: "hidden" }}>
-            {group.items.map((item, i) => (
-              <div key={item.label} onClick={item.action} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderBottom: i < group.items.length - 1 ? "0.5px solid rgba(0,0,0,0.05)" : "none", cursor: item.action ? "pointer" : "default" }}>
-                <div style={{ width: 30, height: 30, borderRadius: 7, background: "#f7f4f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <i className={`ti ${item.icon}`} style={{ color: RED, fontSize: 15 }} />
-                </div>
-                <span style={{ flex: 1, fontSize: 13, color: "#2C2C2A" }}>{item.label}</span>
-                {item.value !== undefined && <span style={{ fontSize: 12, color: "#888780" }}>{item.value}</span>}
-                {item.action && <i className="ti ti-chevron-right" style={{ color: "#ccc", fontSize: 14 }} />}
+      {/* Permissions overview */}
+      <Section title="Your access level">
+        <div style={{padding:"12px 14px"}}>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {[
+              {label:"View app",    ok:true},
+              {label:"Add member",  ok:can.addMember()},
+              {label:"Edit member", ok:can.editMember()},
+              {label:"Delete member",ok:can.deleteMember()},
+              {label:"Assign book", ok:can.assignBook()},
+              {label:"Collect cash",ok:can.collectCash()},
+              {label:"View reports",ok:can.viewReports()},
+              {label:"Download PDF",ok:can.downloadPDF()},
+              {label:"View logs",   ok:can.viewLogs()},
+            ].map((p,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:4,background:p.ok?"#e8f5ee":"#f5f5f5",borderRadius:6,padding:"4px 8px"}}>
+                <i className={`ti ${p.ok?"ti-check":"ti-x"}`} style={{fontSize:11,color:p.ok?GREEN:"#ccc"}}/>
+                <span style={{fontSize:10,color:p.ok?GREEN:"#bbb",fontWeight:p.ok?600:400}}>{p.label}</span>
               </div>
             ))}
           </div>
         </div>
-      ))}
+      </Section>
 
-      <div style={{ textAlign: "center", fontSize: 11, color: "#888780", marginTop: 8, lineHeight: 1.6 }}>
-        Coupon Sale App · {org.name}<br />
-        Built for Mega Lucky Draw 2026
+      <Section title="App">
+        <Row icon="ti-building-community" iconBg="#e8f5ee" label="Organisation" value={org.name.split("&")[0].trim()}/>
+        <Row icon="ti-id-badge" iconBg="#e3f2fd" iconColor="#1565c0" label="Reg. number" value={org.reg}/>
+        <Row icon="ti-ticket" iconBg="#fff3e0" iconColor="#e65100" label="Ticket price" value="Rs.1,000 (fixed)"/>
+        <Row icon="ti-info-circle" iconBg="#f3e5f5" iconColor="#4a148c" label="App version" value="v4.0"/>
+      </Section>
+
+      {can.viewLogs() && (
+        <Section title="Admin tools">
+          <Row icon="ti-activity" iconBg="#e8f5ee" label="Activity log" value={`${data.logs?.length||0} entries`} onClick={()=>onNavigate("logs")}/>
+          <Row icon="ti-download" iconBg="#e3f2fd" iconColor="#1565c0" label="Export all data" onClick={()=>showToast("Data exported")}/>
+        </Section>
+      )}
+
+      <Section title="Account">
+        <Row icon="ti-logout" iconBg="#ffebee" iconColor="#dc2626" label="Sign out" onClick={logout} danger/>
+      </Section>
+
+      <div style={{textAlign:"center",fontSize:10,color:"#ccc",marginTop:10}}>
+        NBC Coupon Sale App · Mega Lucky Draw 2026
       </div>
     </div>
   );

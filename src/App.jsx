@@ -1,90 +1,110 @@
 import { useState } from "react";
-import { AppProvider } from "./data/AppContext";
+import { AppProvider, useApp } from "./data/AppContext";
+import { ROLES } from "./data/store";
+import LoginScreen from "./pages/LoginScreen";
 import HomeScreen from "./pages/HomeScreen";
 import MembersScreen from "./pages/MembersScreen";
 import BooksScreen from "./pages/BooksScreen";
 import ReportsScreen from "./pages/ReportsScreen";
 import SettingsScreen from "./pages/SettingsScreen";
-import { BottomNav } from "./components/UI";
+import ActivityLogScreen from "./pages/ActivityLogScreen";
 
-const RED = "#8B0000", GOLD = "#FFD700";
+// ── Light theme tokens ────────────────────────────────────────
+const T = {
+  primary:   "#1a6b3c",
+  primary2:  "#2e7d32",
+  accent:    "#e8f5ee",
+  bg:        "#f5f7f5",
+  card:      "#ffffff",
+  border:    "#e8ece8",
+  text:      "#1a1a1a",
+  muted:     "#777",
+  danger:    "#c62828",
+  amber:     "#e65100",
+  blue:      "#1565c0",
+};
 
 function StatusBar() {
+  const { currentUser } = useApp();
+  const roleInfo = ROLES[currentUser?.role] || ROLES.viewer;
   return (
-    <div style={{ background: RED, padding: "8px 14px 6px", display: "flex", justifyContent: "space-between" }}>
-      <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 11 }}>
-        {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+    <div style={{ background:T.primary, padding:"8px 14px 6px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <span style={{ color:"rgba(255,255,255,0.85)", fontSize:11 }}>
+        {new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}
       </span>
-      <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 11 }}>●●●</span>
+      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+        <span style={{ background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:10 }}>{roleInfo.label}</span>
+        <span style={{ color:"rgba(255,255,255,0.8)", fontSize:11 }}>●●●</span>
+      </div>
     </div>
   );
 }
 
-function TabHeader({ active }) {
-  const titles = {
-    home: { title: "Niranam Chudan Vallasamithi", sub: "Mega Lucky Draw 2026 · Coordinator" },
-    books: { title: "Coupon books", sub: "₹1,000 per ticket" },
-    members: { title: "Members", sub: "Registered sellers" },
-    reports: { title: "Reports", sub: "Coordinator access" },
-    settings: { title: "Settings", sub: "App configuration" },
-  };
-  const t = titles[active] || titles.home;
+function BottomNav({ active, onNavigate }) {
+  const { can, currentUser } = useApp();
+  const items = [
+    { key:"home",    icon:"ti-home",      label:"Home",    always:true },
+    { key:"books",   icon:"ti-ticket",    label:"Books",   always:true },
+    { key:"members", icon:"ti-users",     label:"Members", always:true },
+    { key:"reports", icon:"ti-chart-bar", label:"Reports", check:"viewReports" },
+    { key:"settings",icon:"ti-settings",  label:"More",    always:true },
+  ].filter(item => item.always || can[item.check]?.());
 
-  const showTabs = ["home"].includes(active);
   return (
-    <>
-      <div style={{ background: RED, padding: "10px 14px 12px" }}>
-        {active === "home" && <div style={{ fontSize: 9, color: GOLD, letterSpacing: "0.3px", marginBottom: 2 }}>Niranam Chudan Vallasamithi &amp; NBC · Reg. PTM/TC/105/2022</div>}
-        <div style={{ color: "#fff", fontSize: 15, fontWeight: 500 }}>{t.title}</div>
-        <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, marginTop: 2 }}>{t.sub}</div>
-      </div>
-      {showTabs && (
-        <div style={{ background: "#6B0000", display: "flex" }}>
-          {[["Summary", "home_summary"], ["Books", "home_books"], ["Members", "home_members"]].map(([l, k]) => (
-            <div key={k} style={{ flex: 1, textAlign: "center", padding: "7px 2px", color: k === "home_summary" ? GOLD : "rgba(255,255,255,0.5)", fontSize: 10, borderBottom: k === "home_summary" ? `2px solid ${GOLD}` : "2px solid transparent" }}>{l}</div>
-          ))}
-        </div>
-      )}
-    </>
+    <div style={{ background:"#fff", borderTop:`1px solid ${T.border}`, display:"flex", padding:"5px 0 10px", boxShadow:"0 -2px 12px rgba(0,0,0,0.06)" }}>
+      {items.map(item => (
+        <button key={item.key} onClick={()=>onNavigate(item.key)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, color:active===item.key?T.primary:"#aaa", fontSize:9, background:"none", border:"none", cursor:"pointer", padding:"2px 0", transition:"color 0.2s" }}>
+          <i className={`ti ${item.icon}`} style={{ fontSize:20, opacity:active===item.key?1:0.6 }} />
+          <span style={{ fontWeight:active===item.key?600:400 }}>{item.label}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
 function AppInner() {
+  const { currentUser, can } = useApp();
   const [active, setActive] = useState("home");
 
-  const screens = {
-    home: HomeScreen,
-    books: BooksScreen,
-    members: MembersScreen,
-    reports: ReportsScreen,
-    settings: SettingsScreen,
+  if (!currentUser) return <LoginScreen />;
+
+  function navigate(key) {
+    // Permission gate
+    if (key==="reports" && !can.viewReports()) return;
+    setActive(key);
+  }
+
+  const screenMap = {
+    home:     <HomeScreen onNavigate={navigate} />,
+    books:    <BooksScreen />,
+    members:  <MembersScreen />,
+    reports:  can.viewReports() ? <ReportsScreen /> : <HomeScreen onNavigate={navigate} />,
+    settings: <SettingsScreen onNavigate={navigate} />,
+    logs:     can.viewLogs() ? <ActivityLogScreen onBack={()=>setActive("settings")} /> : <HomeScreen onNavigate={navigate} />,
   };
 
-  const Screen = screens[active];
+  // Screens that manage their own full-height layout
+  const fullHeight = ["books","members","reports","logs"];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", maxWidth: 420, margin: "0 auto", background: "#f7f4f0", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:420, margin:"0 auto", background:T.bg, fontFamily:"system-ui,-apple-system,sans-serif" }}>
       <StatusBar />
-      {/* Pages that manage their own header */}
-      {["books", "members", "reports"].includes(active) ? (
-        <Screen onNavigate={setActive} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }} />
+      {fullHeight.includes(active) ? (
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          {screenMap[active]}
+        </div>
       ) : (
         <>
-          <TabHeader active={active} />
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
-            <Screen onNavigate={setActive} />
+          <div style={{ flex:1, overflowY:"auto" }}>
+            {screenMap[active]}
           </div>
         </>
       )}
-      <BottomNav active={active} onNavigate={setActive} />
+      <BottomNav active={active} onNavigate={navigate} />
     </div>
   );
 }
 
 export default function App() {
-  return (
-    <AppProvider>
-      <AppInner />
-    </AppProvider>
-  );
+  return <AppProvider><AppInner /></AppProvider>;
 }
