@@ -1,87 +1,106 @@
 import { useApp } from "../data/AppContext";
-import { ROLES } from "../data/store";
-import { fmt } from "../data/store";
+import { ROLES, fmt } from "../data/store";
 
-const GREEN="#1a6b3c";
+const GREEN = "#1a6b3c";
 
-export default function SettingsScreen({ onNavigate }) {
+export default function SettingsScreen({ onSubScreen }) {
   const { data, currentUser, can, logout, showToast } = useApp();
-  const { org, books, collections, members } = data;
-  const roleInfo = ROLES[currentUser?.role]||ROLES.viewer;
-  const totalC = collections.reduce((s,c)=>s+(c.amount||0),0);
+  const { org, books, collections, members, logs } = data;
+  const roleInfo = ROLES[currentUser?.role] || ROLES.viewer;
+  const totalC = collections.reduce((s, c) => s + (c.amount || 0), 0);
+
+  function Row({ icon, iconBg="#e8f5ee", iconColor=GREEN, label, value, onClick, danger, badge }) {
+    return (
+      <div onClick={onClick} style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", borderBottom:"1px solid #f5f7f5", cursor:onClick?"pointer":"default" }}>
+        <div style={{ width:34, height:34, borderRadius:9, background:danger?"#ffebee":iconBg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <i className={`ti ${icon}`} style={{ color:danger?"#dc2626":iconColor, fontSize:16 }}/>
+        </div>
+        <span style={{ flex:1, fontSize:13, fontWeight:500, color:danger?"#dc2626":"#1a1a1a" }}>{label}</span>
+        {badge && <span style={{ fontSize:10, fontWeight:700, background:"#e8f5ee", color:GREEN, padding:"2px 8px", borderRadius:8 }}>{badge}</span>}
+        {value && <span style={{ fontSize:12, color:"#aaa" }}>{value}</span>}
+        {onClick && <i className="ti ti-chevron-right" style={{ color:"#ccc", fontSize:14 }}/>}
+      </div>
+    );
+  }
 
   function Section({ title, children }) {
     return (
-      <div style={{marginBottom:14}}>
-        <div style={{fontSize:10,color:"#888",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:7,paddingLeft:2}}>{title}</div>
-        <div style={{background:"#fff",borderRadius:12,border:"1px solid #eee",overflow:"hidden"}}>
+      <div style={{ marginBottom:14 }}>
+        <div style={{ fontSize:10, fontWeight:700, color:"#aaa", textTransform:"uppercase", letterSpacing:"0.6px", marginBottom:7, paddingLeft:2 }}>{title}</div>
+        <div style={{ background:"#fff", borderRadius:13, border:"1px solid #eee", overflow:"hidden" }}>
           {children}
         </div>
       </div>
     );
   }
 
-  function Row({ icon, iconBg, iconColor="#1a6b3c", label, value, onClick, danger }) {
-    return (
-      <div onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"1px solid #f5f5f5",cursor:onClick?"pointer":"default",background:danger?"#fff5f5":"transparent"}} >
-        <div style={{width:32,height:32,borderRadius:8,background:iconBg||"#e8f5ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-          <i className={`ti ${icon}`} style={{color:iconColor,fontSize:15}}/>
-        </div>
-        <span style={{flex:1,fontSize:13,color:danger?"#dc2626":"#1a1a1a",fontWeight:500}}>{label}</span>
-        {value&&<span style={{fontSize:12,color:"#aaa"}}>{value}</span>}
-        {onClick&&<i className="ti ti-chevron-right" style={{color:"#ccc",fontSize:14}}/>}
-      </div>
-    );
-  }
-
   return (
-    <div style={{background:"#f5f7f5",padding:"10px 12px 20px"}}>
+    <div style={{ background:"#f5f7f5", padding:"10px 12px 24px" }}>
 
-      {/* Profile card */}
-      <div style={{background:`linear-gradient(135deg,${GREEN},#2e7d32)`,borderRadius:14,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:12}}>
-        <div style={{width:48,height:48,borderRadius:14,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:22,fontWeight:700,flexShrink:0}}>
-          {currentUser?.name?.[0]||"?"}
-        </div>
-        <div style={{flex:1}}>
-          <div style={{color:"#fff",fontSize:15,fontWeight:700}}>{currentUser?.name}</div>
-          <div style={{color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:2}}>{currentUser?.email}</div>
-        </div>
-        <div style={{background:"rgba(255,255,255,0.2)",borderRadius:8,padding:"4px 10px",color:"#fff",fontSize:11,fontWeight:700}}>{roleInfo.label}</div>
-      </div>
-
-      {/* Quick stats */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:14}}>
-        {[
-          {l:"Total collected",v:fmt(totalC),c:GREEN},
-          {l:"Members",v:members.length,c:"#1a1a1a"},
-          {l:"Books assigned",v:`${books.length}/500`,c:"#1a1a1a"},
-          {l:"Books complete",v:books.filter(b=>b.status==="complete").length,c:GREEN},
-        ].map((s,i)=>(
-          <div key={i} style={{background:"#fff",borderRadius:9,border:"1px solid #eee",padding:"9px 10px"}}>
-            <div style={{fontSize:10,color:"#aaa"}}>{s.l}</div>
-            <div style={{fontSize:16,fontWeight:700,color:s.c,marginTop:2}}>{s.v}</div>
+      {/* Profile banner */}
+      <div style={{ background:`linear-gradient(135deg,${GREEN},#2e7d32)`, borderRadius:14, padding:"14px 16px", marginBottom:14 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:50, height:50, borderRadius:14, background:"rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:22, fontWeight:700, flexShrink:0 }}>
+            {currentUser?.name?.[0]?.toUpperCase()||"?"}
           </div>
-        ))}
+          <div style={{ flex:1 }}>
+            <div style={{ color:"#fff", fontSize:15, fontWeight:700 }}>{currentUser?.name}</div>
+            <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:2 }}>{currentUser?.email}</div>
+          </div>
+          <div style={{ background:"rgba(255,255,255,0.2)", borderRadius:9, padding:"5px 12px", color:"#fff", fontSize:11, fontWeight:700 }}>
+            {roleInfo.label}
+          </div>
+        </div>
+
+        {/* Quick stats */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:6, marginTop:12 }}>
+          {[
+            { l:"Collected", v:fmt(totalC).replace("Rs.","₹") },
+            { l:"Members",   v:members.length },
+            { l:"Books",     v:`${books.length}/500` },
+            { l:"Complete",  v:books.filter(b=>b.status==="complete").length },
+          ].map((s,i)=>(
+            <div key={i} style={{ background:"rgba(255,255,255,0.15)", borderRadius:8, padding:"6px 8px", textAlign:"center" }}>
+              <div style={{ color:"rgba(255,255,255,0.6)", fontSize:8 }}>{s.l}</div>
+              <div style={{ color:"#fff", fontSize:12, fontWeight:700, marginTop:1 }}>{s.v}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Permissions overview */}
-      <Section title="Your access level">
-        <div style={{padding:"12px 14px"}}>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+      {/* Super admin tools */}
+      {can.manageUsers() && (
+        <Section title="Super admin">
+          <Row icon="ti-users-group" iconBg="#e3f2fd" iconColor="#1565c0" label="User management" badge={`${(data.appUsers||[]).length||0} users`} onClick={()=>onSubScreen("users")}/>
+          <Row icon="ti-activity"    iconBg="#f3e5f5" iconColor="#6a1b9a" label="Activity log"     badge={`${logs?.length||0} entries`} onClick={()=>onSubScreen("logs")}/>
+        </Section>
+      )}
+
+      {/* App info */}
+      <Section title="Organisation">
+        <Row icon="ti-building-community" label="Name"       value={org.name.split("&")[0].trim()}/>
+        <Row icon="ti-id-badge"           iconBg="#e3f2fd" iconColor="#1565c0" label="Reg. No."  value={org.reg}/>
+        <Row icon="ti-ticket"             iconBg="#fff3e0" iconColor="#e65100" label="Ticket price" value="Rs.1,000"/>
+      </Section>
+
+      {/* Your permissions */}
+      <Section title="Your access">
+        <div style={{ padding:"12px 14px" }}>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
             {[
-              {label:"View app",    ok:true},
-              {label:"Add member",  ok:can.addMember()},
-              {label:"Edit member", ok:can.editMember()},
-              {label:"Delete member",ok:can.deleteMember()},
-              {label:"Assign book", ok:can.assignBook()},
-              {label:"Collect cash",ok:can.collectCash()},
-              {label:"View reports",ok:can.viewReports()},
-              {label:"Download PDF",ok:can.downloadPDF()},
-              {label:"View logs",   ok:can.viewLogs()},
+              { label:"View app",       ok:true },
+              { label:"Collect cash",   ok:can.collectCash() },
+              { label:"Add members",    ok:can.addMember() },
+              { label:"Delete members", ok:can.deleteMember() },
+              { label:"Assign books",   ok:can.assignBook() },
+              { label:"Reports",        ok:can.viewReports() },
+              { label:"PDF export",     ok:can.downloadPDF() },
+              { label:"Activity log",   ok:can.viewLogs() },
+              { label:"Manage users",   ok:can.manageUsers() },
             ].map((p,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:4,background:p.ok?"#e8f5ee":"#f5f5f5",borderRadius:6,padding:"4px 8px"}}>
-                <i className={`ti ${p.ok?"ti-check":"ti-x"}`} style={{fontSize:11,color:p.ok?GREEN:"#ccc"}}/>
-                <span style={{fontSize:10,color:p.ok?GREEN:"#bbb",fontWeight:p.ok?600:400}}>{p.label}</span>
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:4, background:p.ok?"#e8f5ee":"#f5f5f5", borderRadius:7, padding:"4px 9px" }}>
+                <i className={`ti ${p.ok?"ti-check":"ti-x"}`} style={{ fontSize:11, color:p.ok?GREEN:"#ccc" }}/>
+                <span style={{ fontSize:10, color:p.ok?GREEN:"#bbb", fontWeight:p.ok?600:400 }}>{p.label}</span>
               </div>
             ))}
           </div>
@@ -89,25 +108,17 @@ export default function SettingsScreen({ onNavigate }) {
       </Section>
 
       <Section title="App">
-        <Row icon="ti-building-community" iconBg="#e8f5ee" label="Organisation" value={org.name.split("&")[0].trim()}/>
-        <Row icon="ti-id-badge" iconBg="#e3f2fd" iconColor="#1565c0" label="Reg. number" value={org.reg}/>
-        <Row icon="ti-ticket" iconBg="#fff3e0" iconColor="#e65100" label="Ticket price" value="Rs.1,000 (fixed)"/>
-        <Row icon="ti-info-circle" iconBg="#f3e5f5" iconColor="#4a148c" label="App version" value="v4.0"/>
+        <Row icon="ti-code" iconBg="#f5f5f5" iconColor="#555" label="Version" value="v5.0"/>
+        <Row icon="ti-download" iconBg="#e3f2fd" iconColor="#1565c0" label="Export all data" onClick={()=>showToast("Data exported")}/>
       </Section>
-
-      {can.viewLogs() && (
-        <Section title="Admin tools">
-          <Row icon="ti-activity" iconBg="#e8f5ee" label="Activity log" value={`${data.logs?.length||0} entries`} onClick={()=>onNavigate("logs")}/>
-          <Row icon="ti-download" iconBg="#e3f2fd" iconColor="#1565c0" label="Export all data" onClick={()=>showToast("Data exported")}/>
-        </Section>
-      )}
 
       <Section title="Account">
-        <Row icon="ti-logout" iconBg="#ffebee" iconColor="#dc2626" label="Sign out" onClick={logout} danger/>
+        <Row icon="ti-logout" label="Sign out" onClick={logout} danger/>
       </Section>
 
-      <div style={{textAlign:"center",fontSize:10,color:"#ccc",marginTop:10}}>
-        NBC Coupon Sale App · Mega Lucky Draw 2026
+      <div style={{ textAlign:"center", fontSize:10, color:"#ccc", marginTop:8, lineHeight:1.8 }}>
+        NBC Coupon Sale App · Mega Lucky Draw 2026<br/>
+        Niranam Chudan Vallasamithi & NBC
       </div>
     </div>
   );
