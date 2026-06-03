@@ -17,6 +17,8 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
 
   const [date,    setDate]    = useState(new Date().toISOString().split("T")[0]);
   const [payMode, setPayMode] = useState("cash");
+  const [paidTo,  setPaidTo]  = useState("coordinator");
+  const isDirect = paidTo === "treasurer";
   // Each entry auto-starts at next available ticket number
   const [entries, setEntries] = useState([{ ticketNo: firstSuggest, buyerName:"" }]);
   const [errors,  setErrors]  = useState({});

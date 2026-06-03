@@ -528,11 +528,19 @@ function MemberDetail({ member, onEdit }) {
                         <span style={{ color:"#888" }}>Date & time</span>
                         <span style={{ fontWeight:600,color:"#1a1a1a" }}>
                           {col.date}
-                          {col.savedAt && (
-                            <span style={{ color:"#aaa",fontWeight:400,marginLeft:5 }}>
-                              {new Date(col.savedAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}
-                            </span>
-                          )}
+                          {(()=>{
+                            // Try savedAt first, then createdAt (Firestore timestamp)
+                            const ts = col.savedAt
+                              ? new Date(col.savedAt)
+                              : col.createdAt?.toDate
+                              ? col.createdAt.toDate()
+                              : null;
+                            return ts ? (
+                              <span style={{ color:"#aaa",fontWeight:400,marginLeft:6 }}>
+                                {ts.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}
+                              </span>
+                            ) : null;
+                          })()}
                         </span>
                       </div>
                       <div style={{ display:"flex",justifyContent:"space-between",fontSize:11 }}>
