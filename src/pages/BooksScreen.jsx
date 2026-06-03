@@ -29,10 +29,10 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
   function addEntry() {
     if (entries.length >= remaining) return;
     setEntries(prev => {
-      // Always go from the HIGHEST number ever used — never re-use a removed slot
       const nums = prev.map(e => parseInt(e.ticketNo)).filter(n => !isNaN(n) && n >= book.ticketFrom && n <= book.ticketTo);
       const maxNum = nums.length > 0 ? Math.max(...nums) : null;
-      const nextNo = maxNum !== null ? String(maxNum + 1) : firstSuggest;
+      // Skip already-sold ticket numbers
+      const nextNo = nextUnsoldFrom(maxNum !== null ? maxNum + 1 : book.ticketFrom + totalSold);
       return [...prev, { ticketNo: nextNo, buyerName:"" }];
     });
   }
@@ -56,8 +56,10 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
         e[`t${i}`] = "Required";
       } else if (isNaN(n) || n < book.ticketFrom || n > book.ticketTo) {
         e[`t${i}`] = `Must be ${book.ticketFrom}–${book.ticketTo}`;
+      } else if (soldTicketNos.has(n)) {
+        e[`t${i}`] = "Already sold — pick another";
       } else if (usedNos.has(n)) {
-        e[`t${i}`] = "Duplicate ticket number";
+        e[`t${i}`] = "Duplicate in this entry";
       } else {
         usedNos.add(n);
       }
@@ -163,13 +165,25 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
                 type="number"
                 value={entry.ticketNo}
                 onChange={e => {
-                  updateEntry(i, "ticketNo", e.target.value);
-                  setErrors(prev => { const n={...prev}; delete n[`t${i}`]; return n; });
+                  const val = e.target.value;
+                  updateEntry(i, "ticketNo", val);
+                  // Live check: mark as sold immediately while typing
+                  const n = parseInt(val);
+                  if (!isNaN(n) && soldTicketNos.has(n)) {
+                    setErrors(prev => ({ ...prev, [`t${i}`]: "Already sold — pick another" }));
+                  } else {
+                    setErrors(prev => { const x={...prev}; delete x[`t${i}`]; return x; });
+                  }
                 }}
                 placeholder={String(book.ticketFrom + totalSold + i)}
-                style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${errors[`t${i}`]?"#dc2626":entry.ticketNo?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:14, fontWeight:700, color:PURPLE, outline:"none", boxSizing:"border-box" }}
+                style={{ width:"100%", background: soldTicketNos.has(parseInt(entry.ticketNo))?"#fff5f5":"#f8faf8", border:`1.5px solid ${errors[`t${i}`]?"#dc2626":soldTicketNos.has(parseInt(entry.ticketNo))?"#dc2626":entry.ticketNo?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:14, fontWeight:700, color:soldTicketNos.has(parseInt(entry.ticketNo))?"#dc2626":PURPLE, outline:"none", boxSizing:"border-box" }}
               />
               {errors[`t${i}`] && <div style={{ fontSize:9, color:"#dc2626", marginTop:2 }}>{errors[`t${i}`]}</div>}
+              {!errors[`t${i}`] && entry.ticketNo && soldTicketNos.has(parseInt(entry.ticketNo)) && (
+                <div style={{ fontSize:9, color:"#dc2626", marginTop:2, fontWeight:600 }}>
+                  <i className="ti ti-lock" style={{ fontSize:9, marginRight:3 }}/>Ticket {entry.ticketNo} already sold — choose another
+                </div>
+              )}
             </div>
 
             {/* Buyer name */}
