@@ -10,14 +10,15 @@ const GREEN = "#1a6b3c";
 // ── Common ticket sell form — clean rewrite ─────────────────
 function SellCommonTicketForm({ book, onSave, onCancel }) {
   const { data } = useApp();
-  const bookCols   = data.collections.filter(c => c.bookId === book.id);
-  const totalSold  = bookCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
-  const remaining  = book.ticketCount - totalSold;
+  const bookCols     = data.collections.filter(c => c.bookId === book.id);
+  const totalSold    = bookCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
+  const remaining    = book.ticketCount - totalSold;
+  const firstSuggest = String(book.ticketFrom + totalSold); // next unsold ticket
 
   const [date,    setDate]    = useState(new Date().toISOString().split("T")[0]);
   const [payMode, setPayMode] = useState("cash");
-  // Each entry: { ticketNo, buyerName }
-  const [entries, setEntries] = useState([{ ticketNo:"", buyerName:"" }]);
+  // Each entry auto-starts at next available ticket number
+  const [entries, setEntries] = useState([{ ticketNo: firstSuggest, buyerName:"" }]);
   const [errors,  setErrors]  = useState({});
 
   function updateEntry(i, key, val) {
@@ -25,7 +26,12 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
   }
   function addEntry() {
     if (entries.length >= remaining) return;
-    setEntries(prev => [...prev, { ticketNo:"", buyerName:"" }]);
+    setEntries(prev => {
+      // Find highest ticket number in current entries and suggest next
+      const nums = prev.map(e => parseInt(e.ticketNo)).filter(n => !isNaN(n));
+      const nextNo = nums.length > 0 ? String(Math.max(...nums) + 1) : firstSuggest;
+      return [...prev, { ticketNo: nextNo, buyerName:"" }];
+    });
   }
   function removeEntry(i) {
     if (entries.length === 1) return;
@@ -146,8 +152,9 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
           <div style={{ display:"flex", gap:8 }}>
             {/* Ticket number */}
             <div style={{ flex:1 }}>
-              <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>
-                Ticket no. <span style={{ color:"#aaa",fontWeight:400 }}>({book.ticketFrom}–{book.ticketTo})</span>
+              <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span>Ticket no.</span>
+                <span style={{ color:"#aaa", fontWeight:400, fontSize:9 }}>{book.ticketFrom}–{book.ticketTo}</span>
               </div>
               <input
                 type="number"
@@ -156,7 +163,7 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
                   updateEntry(i, "ticketNo", e.target.value);
                   setErrors(prev => { const n={...prev}; delete n[`t${i}`]; return n; });
                 }}
-                placeholder={String(book.ticketFrom + i)}
+                placeholder={String(book.ticketFrom + totalSold + i)}
                 style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${errors[`t${i}`]?"#dc2626":entry.ticketNo?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:14, fontWeight:700, color:PURPLE, outline:"none", boxSizing:"border-box" }}
               />
               {errors[`t${i}`] && <div style={{ fontSize:9, color:"#dc2626", marginTop:2 }}>{errors[`t${i}`]}</div>}
