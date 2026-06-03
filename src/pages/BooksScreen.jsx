@@ -29,9 +29,10 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
   function addEntry() {
     if (entries.length >= remaining) return;
     setEntries(prev => {
-      // Find highest ticket number in current entries and suggest next
-      const nums = prev.map(e => parseInt(e.ticketNo)).filter(n => !isNaN(n));
-      const nextNo = nums.length > 0 ? String(Math.max(...nums) + 1) : firstSuggest;
+      // Always go from the HIGHEST number ever used — never re-use a removed slot
+      const nums = prev.map(e => parseInt(e.ticketNo)).filter(n => !isNaN(n) && n >= book.ticketFrom && n <= book.ticketTo);
+      const maxNum = nums.length > 0 ? Math.max(...nums) : null;
+      const nextNo = maxNum !== null ? String(maxNum + 1) : firstSuggest;
       return [...prev, { ticketNo: nextNo, buyerName:"" }];
     });
   }

@@ -288,7 +288,7 @@ export default function RemittanceScreen({ onBack }) {
         )}
 
         {/* ── Record money sent — AFTER the breakdown ── */}
-        {showForm ? (
+        {coordBalance > 0 && showForm ? (
           <div style={{ background:"#fff", borderRadius:13, border:`2px solid ${GREEN}`, padding:"14px", marginBottom:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
               <div style={{ fontSize:13, fontWeight:700, color:GREEN }}>
@@ -360,12 +360,12 @@ export default function RemittanceScreen({ onBack }) {
               <i className="ti ti-send" style={{ fontSize:15 }}/>{saving?"Saving...":"Send & record remittance"}
             </button>
           </div>
-        ) : (
+        ) : coordBalance > 0 ? (
           <button onClick={openForm}
             style={{ width:"100%", background:`linear-gradient(135deg,${GREEN},#2e7d32)`, color:"#fff", border:"none", borderRadius:12, padding:"13px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 4px 14px rgba(26,107,60,0.25)", marginBottom:12 }}>
             <i className="ti ti-send" style={{ fontSize:17 }}/> Record money sent to treasurer
           </button>
-        )}
+        ) : null}
 
         {/* Remittance summary */}
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #eee", padding:"12px 14px" }}>
