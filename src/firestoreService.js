@@ -91,7 +91,8 @@ export async function updateBook(id, data) {
 // ── Collections ────────────────────────────────────────────────
 export async function addCollection(data) {
   // Write the collection entry first
-  const ref = await addDoc(collection(db, C.COLLECTIONS), { ...data, createdAt: serverTimestamp() });
+  const now = new Date();
+  const ref = await addDoc(collection(db, C.COLLECTIONS), { ...data, savedAt: now.toISOString(), createdAt: serverTimestamp() });
 
   // Now read ALL collections for this book (including the one just written)
   // to get the true running total — NO double-counting

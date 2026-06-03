@@ -77,8 +77,8 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
       ticketsSold: entries.length,
       amount: entries.length * 1000,
       paymentMode: payMode,
-      paidTo: "coordinator",
-      verifiedByCoordinator: true,
+      paidTo,
+      verifiedByCoordinator: paidTo === "coordinator",
       ticketEntries: entries.map(e => ({
         ticketNo: parseInt(e.ticketNo),
         buyerName: e.buyerName.trim(),
@@ -197,13 +197,37 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
         </button>
       )}
 
+      {/* Who received? */}
+      <div style={{ marginBottom:10 }}>
+        <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:6 }}>Who received this money? *</div>
+        {[
+          {key:"coordinator", label:"Coordinator (me)",   sub:"You collected directly",       badge:"In hand",     badgeBg:"#e8f5ee", badgeC:GREEN},
+          {key:"treasurer",   label:"Treasurer directly", sub:"Buyer paid treasurer directly", badge:"Verify later",badgeBg:"#fff8e1", badgeC:"#f57c00"},
+        ].map(opt=>{
+          const sel=paidTo===opt.key, bc=opt.key==="treasurer"?"#e65100":GREEN;
+          return(
+            <div key={opt.key} onClick={()=>setPaidTo(opt.key)}
+              style={{ display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:9,border:`${sel?"1.5px":"1px"} solid ${sel?bc:"#e0e0e0"}`,background:sel?opt.key==="treasurer"?"#fff8e1":"#f0f9f4":"#fff",marginBottom:5,cursor:"pointer" }}>
+              <div style={{ width:17,height:17,borderRadius:"50%",border:`2px solid ${sel?bc:"#ccc"}`,background:sel?bc:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                {sel&&<div style={{ width:6,height:6,borderRadius:"50%",background:"#fff" }}/>}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:12,fontWeight:600,color:sel?bc:"#1a1a1a" }}>{opt.label}</div>
+                <div style={{ fontSize:10,color:"#888" }}>{opt.sub}</div>
+              </div>
+              <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:6,background:opt.badgeBg,color:opt.badgeC }}>{opt.badge}</span>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Payment mode */}
       <div style={{ marginBottom:12 }}>
         <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:6 }}>Payment mode</div>
         <div style={{ display:"flex", gap:6 }}>
           {["cash","upi","bank"].map(m=>(
             <div key={m} onClick={()=>setPayMode(m)}
-              style={{ flex:1, border:`${payMode===m?"2px":"1px"} solid ${payMode===m?PURPLE:"#e0e0e0"}`, borderRadius:9, padding:"9px 4px", background:payMode===m?"#f3e5f5":"#fff", textAlign:"center", fontSize:12, color:payMode===m?PURPLE:"#888", fontWeight:payMode===m?700:400, cursor:"pointer" }}>
+              style={{ flex:1, border:`${payMode===m?"2px":"1px"} solid ${payMode===m?isDirect?"#e65100":PURPLE:"#e0e0e0"}`, borderRadius:9, padding:"9px 4px", background:payMode===m?isDirect?"#fff8e1":"#f3e5f5":"#fff", textAlign:"center", fontSize:12, color:payMode===m?isDirect?"#e65100":PURPLE:"#888", fontWeight:payMode===m?700:400, cursor:"pointer" }}>
               <i className={`ti ${m==="cash"?"ti-cash":m==="upi"?"ti-device-mobile":"ti-building-bank"}`} style={{ fontSize:16, display:"block", marginBottom:3 }}/>
               {m.toUpperCase()}
             </div>

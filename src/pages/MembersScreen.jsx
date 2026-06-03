@@ -525,8 +525,15 @@ function MemberDetail({ member, onEdit }) {
                     {/* Row 2: Detail lines */}
                     <div style={{ borderTop:"1px solid #f5f5f5",paddingTop:6,display:"flex",flexDirection:"column",gap:3 }}>
                       <div style={{ display:"flex",justifyContent:"space-between",fontSize:11 }}>
-                        <span style={{ color:"#888" }}>Date</span>
-                        <span style={{ fontWeight:600,color:"#1a1a1a" }}>{col.date}</span>
+                        <span style={{ color:"#888" }}>Date & time</span>
+                        <span style={{ fontWeight:600,color:"#1a1a1a" }}>
+                          {col.date}
+                          {col.savedAt && (
+                            <span style={{ color:"#aaa",fontWeight:400,marginLeft:5 }}>
+                              {new Date(col.savedAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}
+                            </span>
+                          )}
+                        </span>
                       </div>
                       <div style={{ display:"flex",justifyContent:"space-between",fontSize:11 }}>
                         <span style={{ color:"#888" }}>Book</span>
