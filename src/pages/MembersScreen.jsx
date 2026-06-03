@@ -263,7 +263,7 @@ function MemberForm({ onSave, onCancel, existing }) {
 
 // ── Member detail ─────────────────────────────────────────────
 function MemberDetail({ member, onEdit }) {
-  const { data, addCollection, stopSelling } = useApp();
+  const { data, addCollection, stopSelling, resetBook } = useApp();
   const { books, collections } = data;
 
   // Always use live collections from context
@@ -390,7 +390,7 @@ function MemberDetail({ member, onEdit }) {
                 const pct        = effective>0?Math.round((totalSold/effective)*100):0;
                 const sr         = getSeriesFromBook(book.bookNumber);
                 const isOpen     = collectingBook===book.id;
-                const isComplete = book.status==="complete" || totalSold>=effective;
+                const isComplete = book.status==="complete";
 
                 return(
                   <div key={book.id} style={{ background:"#fff",borderRadius:10,border:`1px solid ${isOpen?GREEN:"#eee"}`,padding:"10px 12px",marginBottom:8,transition:"border 0.2s" }}>
@@ -416,8 +416,8 @@ function MemberDetail({ member, onEdit }) {
                     </div>
                     {returned>0&&<div style={{ fontSize:10,color:"#e65100",marginBottom:isComplete?0:8 }}><i className="ti ti-corner-down-left" style={{ fontSize:11,marginRight:3 }}/>{returned} ticket{returned!==1?"s":""} returned — {book.stopNotes||"stopped selling"}</div>}
 
-                    {/* Collect Cash button — shown even if ongoing, hidden only if complete */}
-                    {!isComplete && (
+                    {/* Collect Cash or Reopen */}
+                    {!isComplete ? (
                       isOpen ? (
                         <InlineCollectCash
                           key={`${book.id}-${collections.length}`}
@@ -431,6 +431,14 @@ function MemberDetail({ member, onEdit }) {
                         <button onClick={()=>setCollectingBook(book.id)}
                           style={{ width:"100%",background:`linear-gradient(135deg,${GREEN},#2e7d32)`,color:"#fff",border:"none",borderRadius:8,padding:"9px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5 }}>
                           <i className="ti ti-cash" style={{ fontSize:14 }}/> Collect Cash
+                        </button>
+                      )
+                    ) : (
+                      /* Book is marked complete — show reopen if tickets still unsold */
+                      !book.stoppedSelling && totalSold < effective && (
+                        <button onClick={()=>resetBook(book.id)}
+                          style={{ width:"100%",background:"#fff",color:"#e65100",border:"1.5px solid #e65100",borderRadius:8,padding:"8px",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5,marginTop:4 }}>
+                          <i className="ti ti-refresh" style={{ fontSize:13 }}/> Reopen book — still {effective - totalSold} tickets unsold
                         </button>
                       )
                     )}

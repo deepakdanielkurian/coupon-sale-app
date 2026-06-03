@@ -613,7 +613,7 @@ function AssignBookForm({ onSave, onCancel }) {
 
 // ── Main Books Screen ─────────────────────────────────────────
 export default function BooksScreen({ triggerCollect }) {
-  const { data, addBook, addCollection, stopSelling } = useApp();
+  const { data, addBook, addCollection, stopSelling, resetBook } = useApp();
   const [view,   setView]  = useState("list");
   const [selBook,setBook]  = useState(null);
   const [fSeries,setFS]    = useState("all");
@@ -760,14 +760,21 @@ export default function BooksScreen({ triggerCollect }) {
                 <span style={{ color:stats.pending>0?"#e65100":GREEN,fontWeight:stats.pending===0?700:400 }}>Pending: {fmt(stats.pending)}</span>
               </div>
               {stats.returned>0&&<div style={{ fontSize:10,color:"#e65100",marginBottom:book.status!=="complete"?8:0 }}><i className="ti ti-corner-down-left" style={{ fontSize:11,marginRight:3 }}/>{stats.returned} ticket{stats.returned!==1?"s":""} returned · {book.stopNotes||"Stopped selling"}</div>}
-              {book.status!=="complete"&&(
-                book.isCommon?(
+              {book.status!=="complete" ? (
+                book.isCommon ? (
                   <button onClick={()=>{setBook(book);setView("common");}} style={{ width:"100%",background:"linear-gradient(135deg,#4a148c,#6a1b9a)",color:"#fff",border:"none",borderRadius:8,padding:"9px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5 }}>
                     <i className="ti ti-ticket"/> Sell common ticket
                   </button>
-                ):(
+                ) : (
                   <button onClick={()=>{setBook(book);setView("collect");}} style={{ width:"100%",background:`linear-gradient(135deg,${GREEN},#2e7d32)`,color:"#fff",border:"none",borderRadius:8,padding:"9px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5 }}>
                     <i className="ti ti-cash"/> Collect Cash
+                  </button>
+                )
+              ) : (
+                /* Wrongly marked complete — show reopen */
+                !book.isCommon && !book.stoppedSelling && stats.totalSold < stats.effective && (
+                  <button onClick={()=>resetBook(book.id)} style={{ width:"100%",background:"#fff",color:"#e65100",border:"1.5px solid #e65100",borderRadius:8,padding:"8px",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5,marginTop:4 }}>
+                    <i className="ti ti-refresh" style={{ fontSize:13 }}/> Reopen — {stats.effective - stats.totalSold} tickets still unsold
                   </button>
                 )
               )}
