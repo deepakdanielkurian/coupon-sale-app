@@ -115,6 +115,14 @@ export async function addCollection(data) {
   return ref.id;
 }
 
+// ── Verify a direct-to-treasurer collection entry ───────────
+export async function verifyDirectPayment(collectionId) {
+  await updateDoc(doc(db, C.COLLECTIONS, collectionId), {
+    verifiedByCoordinator: true,
+    verifiedAt: serverTimestamp(),
+  });
+}
+
 // ── Reset book status (fix wrongly-completed books) ──────────
 export async function resetBookStatus(bookId) {
   await updateDoc(doc(db, C.BOOKS, bookId), {

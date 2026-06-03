@@ -24,6 +24,8 @@ function InlineCollectCash({ book, collections, onSave, onCancel, onStop }) {
   const [payMode, setPayMode] = useState("cash");
   const [remarks, setRemarks] = useState("");
   const [mode,    setMode]    = useState("collect"); // "collect" | "stop"
+  const [paidTo,  setPaidTo]  = useState("coordinator");
+  const isDirect = paidTo === "treasurer";
 
   // Stop-selling state
   const [stopReturning, setStopReturning] = useState(String(remaining));
@@ -44,7 +46,7 @@ function InlineCollectCash({ book, collections, onSave, onCancel, onStop }) {
 
   function submitCollect() {
     if (!valid) return;
-    onSave({ id:`C-${Date.now()}`, bookId:book.id, memberId:book.memberId, date, ticketsSold:t, amount, paymentMode:payMode, remarks });
+    onSave({ id:`C-${Date.now()}`, bookId:book.id, memberId:book.memberId, date, ticketsSold:t, amount, paymentMode:payMode, paidTo, verifiedByCoordinator: paidTo === "coordinator", remarks });
   }
 
   function submitStop() {
@@ -137,19 +139,54 @@ function InlineCollectCash({ book, collections, onSave, onCancel, onStop }) {
                   </div>
                 </>
               )}
-              <div style={{ display:"flex", gap:5, marginBottom:8 }}>
-                {["cash","upi","bank"].map(m=>(
-                  <div key={m} onClick={()=>setPayMode(m)}
-                    style={{ flex:1, border:`${payMode===m?"2px":"1px"} solid ${payMode===m?GREEN:"#e0e0e0"}`, borderRadius:7, padding:"7px 4px", background:payMode===m?"#e8f5ee":"#fff", textAlign:"center", fontSize:10, color:payMode===m?GREEN:"#888", fontWeight:payMode===m?700:400, cursor:"pointer" }}>
-                    <i className={`ti ${MODE_ICONS[m]}`} style={{ fontSize:14, display:"block", marginBottom:2 }}/>{m.toUpperCase()}
+              {/* Who received? */}
+              <div style={{ marginBottom:8 }}>
+                <div style={{ fontSize:10,fontWeight:600,color:"#555",marginBottom:5 }}>Who received this money? *</div>
+                {[
+                  {key:"coordinator",label:"Coordinator (me)",    sub:"Cash or UPI paid to you directly",    badge:"In hand",      badgeBg:"#e8f5ee",color:GREEN},
+                  {key:"treasurer",  label:"Treasurer directly",  sub:"Member paid treasurer — bypasses you",badge:"Verify later", badgeBg:"#fff8e1",color:"#f57c00"},
+                ].map(opt=>{
+                  const sel=paidTo===opt.key, bc=opt.key==="treasurer"?"#e65100":GREEN;
+                  return(
+                    <div key={opt.key} onClick={()=>setPaidTo(opt.key)}
+                      style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:`${sel?"1.5px":"1px"} solid ${sel?bc:"#e0e0e0"}`,background:sel?opt.key==="treasurer"?"#fff8e1":"#f0f9f4":"#fff",marginBottom:4,cursor:"pointer" }}>
+                      <div style={{ width:16,height:16,borderRadius:"50%",border:`2px solid ${sel?bc:"#ccc"}`,background:sel?bc:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                        {sel&&<div style={{ width:5,height:5,borderRadius:"50%",background:"#fff" }}/>}
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:12,fontWeight:600,color:sel?bc:"#1a1a1a" }}>{opt.label}</div>
+                        <div style={{ fontSize:10,color:"#888" }}>{opt.sub}</div>
+                      </div>
+                      <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:6,background:opt.badgeBg,color:opt.color }}>{opt.badge}</span>
+                    </div>
+                  );
+                })}
+                {isDirect&&(
+                  <div style={{ background:"#fff8e1",border:"1px solid #ffe082",borderRadius:7,padding:"6px 9px",display:"flex",gap:6,marginTop:2 }}>
+                    <i className="ti ti-info-circle" style={{ color:"#f57c00",fontSize:13,flexShrink:0 }}/>
+                    <span style={{ fontSize:10,color:"#e65100",lineHeight:1.5 }}>Saved as <strong>Pending verification</strong>. Won't count in your balance until you confirm.</span>
                   </div>
-                ))}
+                )}
+              </div>
+
+              {/* Payment mode */}
+              <div style={{ marginBottom:8 }}>
+                <div style={{ fontSize:10,fontWeight:600,color:"#555",marginBottom:5 }}>Payment mode</div>
+                <div style={{ display:"flex",gap:5 }}>
+                  {["cash","upi","bank"].map(m=>(
+                    <div key={m} onClick={()=>setPayMode(m)}
+                      style={{ flex:1,border:`${payMode===m?"2px":"1px"} solid ${payMode===m?isDirect?"#e65100":GREEN:"#e0e0e0"}`,borderRadius:7,padding:"7px 4px",background:payMode===m?isDirect?"#fff8e1":"#e8f5ee":"#fff",textAlign:"center",fontSize:10,color:payMode===m?isDirect?"#e65100":GREEN:"#888",fontWeight:payMode===m?700:400,cursor:"pointer" }}>
+                      <i className={`ti ${MODE_ICONS[m]}`} style={{ fontSize:14,display:"block",marginBottom:2 }}/>{m.toUpperCase()}
+                    </div>
+                  ))}
+                </div>
               </div>
               <input value={remarks} onChange={e=>setRemarks(e.target.value)} placeholder="Remarks (optional)"
-                style={{ width:"100%", background:"#fff", border:"1px solid #e0e0e0", borderRadius:8, padding:"8px 10px", fontSize:12, outline:"none", boxSizing:"border-box", marginBottom:8 }}/>
+                style={{ width:"100%",background:"#fff",border:"1px solid #e0e0e0",borderRadius:8,padding:"8px 10px",fontSize:12,outline:"none",boxSizing:"border-box",marginBottom:8 }}/>
               <button onClick={submitCollect} disabled={!valid}
-                style={{ width:"100%", background:valid?`linear-gradient(135deg,${GREEN},#2e7d32)`:"#e0e0e0", color:"#fff", border:"none", borderRadius:9, padding:"11px", fontSize:12, fontWeight:700, cursor:valid?"pointer":"not-allowed" }}>
-                <i className="ti ti-check" style={{ marginRight:5 }}/>Save collection entry
+                style={{ width:"100%",background:valid?isDirect?"linear-gradient(135deg,#e65100,#bf360c)":`linear-gradient(135deg,${GREEN},#2e7d32)`:"#e0e0e0",color:"#fff",border:"none",borderRadius:9,padding:"11px",fontSize:12,fontWeight:700,cursor:valid?"pointer":"not-allowed" }}>
+                <i className={`ti ${isDirect?"ti-clock":"ti-check"}`} style={{ marginRight:5 }}/>
+                {isDirect?"Save — pending verification":"Save collection entry"}
               </button>
             </>
           )}
@@ -459,7 +496,7 @@ function MemberDetail({ member, onEdit }) {
                 const book=books.find(b=>b.id===col.bookId);
                 const mode=col.paymentMode||"cash";
                 return(
-                  <div key={col.id} style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:6 }}>
+                  <div key={col.id} style={{ background:"#fff",borderRadius:10,border:`1px solid ${col.paidTo==="treasurer"&&!col.verifiedByCoordinator?"#ffe082":"#eee"}`,padding:"10px 12px",marginBottom:6 }}>
                     <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                       <div style={{ width:32,height:32,borderRadius:8,background:MODE_BG[mode],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                         <i className={`ti ${MODE_ICONS[mode]}`} style={{ color:MODE_COLORS[mode],fontSize:16 }}/>
@@ -470,7 +507,20 @@ function MemberDetail({ member, onEdit }) {
                       </div>
                       <div style={{ textAlign:"right" }}>
                         <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:7,background:MODE_BG[mode],color:MODE_COLORS[mode] }}>{mode.toUpperCase()}</span>
-                        {col.remarks&&<div style={{ fontSize:9,color:"#aaa",marginTop:3,maxWidth:80,textAlign:"right" }}>{col.remarks}</div>}
+                        {col.paidTo==="treasurer"?(
+                          <div style={{ marginTop:3 }}>
+                            <span style={{ fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:5,background:"#e3f2fd",color:"#1565c0" }}>Direct–treasurer</span>
+                            <div style={{ fontSize:9,marginTop:2,color:col.verifiedByCoordinator?"#1a6b3c":"#f57c00",fontWeight:600 }}>
+                              <i className={`ti ${col.verifiedByCoordinator?"ti-circle-check":"ti-clock"}`} style={{ fontSize:9,marginRight:2 }}/>
+                              {col.verifiedByCoordinator?"Verified":"Pending verify"}
+                            </div>
+                          </div>
+                        ):(
+                          <div style={{ marginTop:3 }}>
+                            <span style={{ fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:5,background:"#e8f5ee",color:"#1a6b3c" }}>To coordinator</span>
+                            <div style={{ fontSize:9,color:"#1a6b3c",marginTop:2 }}><i className="ti ti-circle-check" style={{ fontSize:9,marginRight:2 }}/>Settled</div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

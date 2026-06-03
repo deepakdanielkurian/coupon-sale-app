@@ -42,14 +42,26 @@ export function getBookStats(book, collections) {
 export function getMemberStats(memberId, books, collections) {
   const mb = books.filter(b => b.memberId === memberId);
   let totalCollected = 0, totalPending = 0, totalTickets = 0, soldTickets = 0;
+  let toCoordinator = 0, directTreasurer = 0, pendingVerify = 0;
   mb.forEach(b => {
     const s = getBookStats(b, collections);
     totalCollected += s.totalCollected;
     totalPending   += s.pending;
-    totalTickets   += s.effective;   // use effective (returned already deducted)
+    totalTickets   += s.effective;
     soldTickets    += s.totalSold;
   });
-  return { memberBooks: mb, totalCollected, totalPending, totalTickets, soldTickets };
+  // Payment destination breakdown
+  const memberCols = collections.filter(c => c.memberId === memberId);
+  memberCols.forEach(c => {
+    const amt = c.amount || 0;
+    if (c.paidTo === 'treasurer') {
+      directTreasurer += amt;
+      if (!c.verifiedByCoordinator) pendingVerify += amt;
+    } else {
+      toCoordinator += amt;
+    }
+  });
+  return { memberBooks: mb, totalCollected, totalPending, totalTickets, soldTickets, toCoordinator, directTreasurer, pendingVerify };
 }
 
 export function fmt(num) {
