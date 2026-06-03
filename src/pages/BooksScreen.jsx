@@ -431,9 +431,11 @@ function CollectCashForm({ book, onSave, onStop, onCancel }) {
         </div>
       </div>
       <InputField label="Remarks (optional)" value={remarks} onChange={setRemarks} placeholder="e.g. 2 tickets returned..."/>
-      <PrimaryButton onClick={submit} disabled={!tickets||tickets<=0||tickets>remaining} style={{ background:!tickets||tickets>remaining?"#e0e0e0":isDirect?"linear-gradient(135deg,#e65100,#bf360c)":undefined }}>
-        <i className={`ti ${isDirect?"ti-clock":"ti-cash"}`}/> {isDirect?"Save — pending verification":"Collect Cash"}
-      </PrimaryButton>
+      <button onClick={submit} disabled={!tickets||tickets<=0||tickets>remaining}
+        style={{ width:"100%",background:(!tickets||tickets<=0||tickets>remaining)?"#ccc":isDirect?"linear-gradient(135deg,#e65100,#bf360c)":"linear-gradient(135deg,#1a6b3c,#2e7d32)",color:"#fff",border:"none",borderRadius:10,padding:"13px",fontSize:13,fontWeight:700,cursor:(!tickets||tickets<=0||tickets>remaining)?"not-allowed":"pointer",boxShadow:(!tickets||tickets<=0||tickets>remaining)?"none":isDirect?"0 3px 10px rgba(230,81,0,0.3)":"0 3px 10px rgba(26,107,60,0.3)",marginTop:4,display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
+        <i className={`ti ${isDirect?"ti-clock":"ti-cash"}`} style={{ fontSize:16 }}/>
+        {!tickets||tickets<=0 ? "Enter tickets to collect" : tickets>remaining ? `Max ${remaining} remaining` : isDirect ? "Save — pending verification" : "Collect Cash"}
+      </button>
       <OutlineButton onClick={onCancel}>Cancel</OutlineButton>
     </div>
   );

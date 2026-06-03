@@ -348,13 +348,11 @@ export function generateCombinedPDF(selectedIds, data) {
     if (!sec) return;
 
     if (idx === 0) {
-      // First section: use page 1
+      // First section: use page 1 (already exists)
       const y = letterhead(doc, sec.title, sec.subtitle);
       sec.fn(doc, data, y);
     } else {
-      // Section heading — no full page, just a header block
-      if (idx > 0) doc.addPage();
-      // Content page
+      // Each subsequent section starts on a new page — ONE addPage only
       doc.addPage();
       const y = letterhead(doc, sec.title, sec.subtitle);
       sec.fn(doc, data, y);
