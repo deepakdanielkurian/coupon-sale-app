@@ -347,8 +347,8 @@ function CollectCashForm({ book, onSave, onStop, onCancel }) {
         <input type="date" value={date} onChange={e=>setDate(e.target.value)}
           style={{ width:"100%",background:"#fff",border:`1.5px solid ${GREEN}`,borderRadius:9,padding:"10px 11px",fontSize:13,outline:"none",boxSizing:"border-box" }}/>
       </div>
-      <InputField label={`Tickets sold (max ${remaining})`} type="number" value={ticketsSold} onChange={setSold} required
-        error={tickets>remaining?`Cannot exceed ${remaining}`:""}/>
+      <InputField label={`Tickets sold this time *`} type="number" value={ticketsSold} onChange={setSold} required
+        error={tickets>remaining?remaining>0?`Only ${remaining} ticket${remaining===1?"":"s"} left`:"":""}/>
 
       <div style={{ background:"#e8f5ee",borderRadius:10,padding:"12px 14px",marginBottom:10,border:"1px solid #a5d6a7" }}>
         <div style={{ fontSize:11,color:"#555",marginBottom:3 }}>Amount (auto-calculated)</div>
@@ -697,7 +697,7 @@ export default function BooksScreen({ triggerCollect }) {
   if (view==="collect"&&selBook) return(
     <div style={{ display:"flex",flexDirection:"column",flex:1,overflow:"hidden" }}>
       <Header title="Collect Cash" sub={`Book ${selBook.bookNumber}`} onBack={()=>setView("list")}/>
-      <CollectCashForm book={selBook} onSave={col=>{addCollection(col);setView("list");}} onCancel={()=>setView("list")}/>
+      <CollectCashForm book={selBook} onSave={col=>{addCollection(col);setView("list");}} onStop={(ret,notes)=>{stopSelling(selBook.id,ret,notes);setView("list");}} onCancel={()=>setView("list")}/>
     </div>
   );
   if (view==="common"&&selBook) return(

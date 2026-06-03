@@ -229,17 +229,17 @@ export function downloadBackupJSON(backup) {
 // ── Realtime listeners ─────────────────────────────────────────
 export function listenMembers(cb) {
   return onSnapshot(query(collection(db, C.MEMBERS), orderBy("createdAt", "asc")),
-    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    s => cb(s.docs.map(d => ({ ...d.data(), id: d.id }))));
 }
 export function listenBooks(cb) {
   return onSnapshot(query(collection(db, C.BOOKS), orderBy("createdAt", "asc")),
-    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    s => cb(s.docs.map(d => ({ ...d.data(), id: d.id }))));
 }
 export function listenCollections(cb) {
   return onSnapshot(query(collection(db, C.COLLECTIONS), orderBy("createdAt", "asc")),
-    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    s => cb(s.docs.map(d => ({ ...d.data(), id: d.id }))));
 }
 export function listenLogs(cb) {
   return onSnapshot(query(collection(db, C.LOGS), orderBy("createdAt", "desc")),
-    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    s => cb(s.docs.map(d => ({ ...d.data(), id: d.id }))));
 }
