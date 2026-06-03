@@ -49,7 +49,7 @@ export default function RemittanceScreen({ onBack }) {
     return colTime > lastRemitTime; // strictly AFTER the remittance
   });
 
-  // ── Fresh cycle calculations (since last remittance) ────────
+  // ── Fresh cycle — for display of what came in since last remittance ────
   const freshToCoord   = freshCols.filter(c => c.paidTo !== "treasurer").reduce((s,c) => s+(c.amount||0), 0);
   const freshDirect    = freshCols.filter(c => c.paidTo === "treasurer");
   const freshPending   = freshDirect.filter(c => !c.verifiedByCoordinator);
@@ -57,8 +57,11 @@ export default function RemittanceScreen({ onBack }) {
   const freshPendingAmt= freshPending.reduce((s,c) => s+(c.amount||0), 0);
   const freshVerifiedAmt=freshVerified.reduce((s,c) => s+(c.amount||0), 0);
 
-  // Coordinator balance = fresh received - nothing (each remittance resets the cycle)
-  const coordBalance   = freshToCoord;
+  // ── TRUE coordinator balance = ALL TIME received minus ALL TIME remitted ──
+  // This is the real outstanding amount regardless of cycles
+  const allCoordReceived = collections.filter(c => c.paidTo !== "treasurer").reduce((s,c) => s+(c.amount||0), 0);
+  const totalRemitted    = remittances.reduce((s,r) => s+(r.amount||0), 0);
+  const coordBalance     = Math.max(0, allCoordReceived - totalRemitted);
 
   // Mode breakdown — fresh coordinator-received only
   const byMode = { cash:0, upi:0, bank:0, common:0 };
@@ -143,7 +146,7 @@ export default function RemittanceScreen({ onBack }) {
           </div>
           <div style={{ fontSize:32, fontWeight:700, color:"#fff", marginBottom:2 }}>{fmt(coordBalance)}</div>
           <div style={{ fontSize:10, color:"rgba(255,255,255,0.55)" }}>
-            Fresh money received by you since last remittance
+            Total received by you (all time) − total remitted to treasurer
           </div>
           {lastRemittance && (
             <div style={{ marginTop:10, background:"rgba(255,255,255,0.12)", borderRadius:8, padding:"7px 10px", fontSize:10, color:"rgba(255,255,255,0.7)" }}>
@@ -277,18 +280,27 @@ export default function RemittanceScreen({ onBack }) {
           </div>
         )}
 
-        {!hasAnythingFresh && (
+        {coordBalance === 0 && !hasAnythingFresh && (
           <div style={{ background:"#e8f5ee", borderRadius:9, padding:"12px 14px", marginBottom:10, display:"flex", gap:8, alignItems:"center" }}>
             <i className="ti ti-circle-check" style={{ color:GREEN, fontSize:20, flexShrink:0 }}/>
             <div>
-              <div style={{ fontSize:12, fontWeight:700, color:GREEN }}>All clear — balance is zero</div>
+              <div style={{ fontSize:12, fontWeight:700, color:GREEN }}>All clear — fully remitted</div>
               <div style={{ fontSize:10, color:"#888", marginTop:2 }}>No new collections since last remittance on {lastRemitDate}</div>
+            </div>
+          </div>
+        )}
+        {coordBalance > 0 && !hasAnythingFresh && (
+          <div style={{ background:"#fff8e1", borderRadius:9, padding:"12px 14px", marginBottom:10, display:"flex", gap:8, alignItems:"center", border:"1px solid #ffe082" }}>
+            <i className="ti ti-alert-triangle" style={{ color:"#e65100", fontSize:20, flexShrink:0 }}/>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:"#e65100" }}>Outstanding balance from previous cycle</div>
+              <div style={{ fontSize:10, color:"#888", marginTop:2 }}>{fmt(coordBalance)} still to be remitted to treasurer</div>
             </div>
           </div>
         )}
 
         {/* ── Record money sent — AFTER the breakdown ── */}
-        {coordBalance > 0 && showForm ? (
+        {showForm && coordBalance > 0 ? (
           <div style={{ background:"#fff", borderRadius:13, border:`2px solid ${GREEN}`, padding:"14px", marginBottom:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
               <div style={{ fontSize:13, fontWeight:700, color:GREEN }}>
@@ -343,9 +355,9 @@ export default function RemittanceScreen({ onBack }) {
               <div style={{ background:"#f5f7f5", borderRadius:8, padding:"9px 11px", marginBottom:12 }}>
                 <div style={{ fontSize:10, color:"#aaa", marginBottom:5 }}>After sending</div>
                 {[
-                  ["Balance now",   fmt(coordBalance),                      "#1a1a1a"],
-                  ["Sending",       `− ${fmt(parseInt(amount)||0)}`,         "#e65100"],
-                  ["Balance after", fmt(coordBalance-(parseInt(amount)||0)), (coordBalance-(parseInt(amount)||0))>=0?GREEN:"#c62828"],
+                  ["Outstanding (you hold)",    fmt(coordBalance),                       "#1a1a1a"],
+                  ["Remitting to treasurer",   `− ${fmt(parseInt(amount)||0)}`,          "#e65100"],
+                  ["Remaining after remittance",fmt(coordBalance-(parseInt(amount)||0)),(coordBalance-(parseInt(amount)||0))>=0?GREEN:"#c62828"],
                 ].map(([l,v,c])=>(
                   <div key={l} style={{ display:"flex", justifyContent:"space-between", fontSize:11, padding:"3px 0" }}>
                     <span style={{ color:"#777" }}>{l}</span>
