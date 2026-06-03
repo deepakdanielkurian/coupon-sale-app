@@ -9,6 +9,7 @@ export default function RemittanceScreen({ onBack }) {
   const { remittances=[], collections, members, books } = data;
 
   const [showForm, setShowForm] = useState(false);
+  function openForm() { setAmount(String(coordBalance > 0 ? coordBalance : "")); setShowForm(true); }
   const [date,    setDate]      = useState(new Date().toISOString().split("T")[0]);
   const [amount,  setAmount]    = useState("");
   const [toWhom,  setToWhom]    = useState("Treasurer");
@@ -263,7 +264,7 @@ export default function RemittanceScreen({ onBack }) {
             </button>
           </div>
         ):(
-          <button onClick={()=>setShowForm(true)}
+          <button onClick={openForm}
             style={{ width:"100%",background:`linear-gradient(135deg,${GREEN},#2e7d32)`,color:"#fff",border:"none",borderRadius:12,padding:"13px",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:"0 4px 14px rgba(26,107,60,0.25)",marginBottom:12 }}>
             <i className="ti ti-send" style={{ fontSize:17 }}/> Record money sent to treasurer
           </button>
