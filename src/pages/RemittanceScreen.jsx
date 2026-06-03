@@ -34,12 +34,18 @@ export default function RemittanceScreen({ onBack }) {
   // Filter collections saved AFTER the last remittance timestamp
   const freshCols = collections.filter(c => {
     if (!lastRemitTime) return true; // no remittance yet — show everything
-    // Get this collection's timestamp
-    const colTime = c.savedAt
-      ? new Date(c.savedAt).getTime()
-      : c.createdAt?.toDate
-      ? c.createdAt.toDate().getTime()
-      : new Date(c.date + "T00:00:00").getTime();
+    // Try all timestamp sources, most precise first
+    let colTime = null;
+    if (c.savedAt) {
+      colTime = new Date(c.savedAt).getTime();
+    } else if (c.createdAt && typeof c.createdAt.toDate === "function") {
+      colTime = c.createdAt.toDate().getTime();
+    } else if (c.createdAt && c.createdAt.seconds) {
+      // Firestore Timestamp as plain object {seconds, nanoseconds}
+      colTime = c.createdAt.seconds * 1000;
+    }
+    // If we can't determine time precisely, assume old (exclude from fresh)
+    if (!colTime) return false;
     return colTime > lastRemitTime; // strictly AFTER the remittance
   });
 
@@ -74,11 +80,15 @@ export default function RemittanceScreen({ onBack }) {
   }).filter(m => m.total > 0).sort((a,b) => b.total - a.total);
 
   // Common ticket fresh income
+  // Common book fresh collections — only those in freshCols
   const commonFreshCols = freshCols.filter(c => {
     const book = books.find(b => b.id === c.bookId);
-    return book?.isCommon;
+    return book?.isCommon && c.paidTo !== "treasurer"; // coordinator received
   });
   const commonFreshAmt = commonFreshCols.reduce((s,c) => s+(c.amount||0), 0);
+
+  // hasAnythingFresh: if true, there are actual fresh collections to show
+  const hasAnythingFresh = freshCols.length > 0;
 
   // All-time for pending verification (not cycle-limited)
   const allDirectEntries = collections.filter(c => c.paidTo === "treasurer");
@@ -211,7 +221,7 @@ export default function RemittanceScreen({ onBack }) {
         </div>
 
         {/* Common book income */}
-        {commonFreshAmt > 0 && (
+        {hasAnythingFresh && commonFreshAmt > 0 && (
           <div style={{ background:"#f3e5f5", borderRadius:9, border:"1px solid #ce93d830", padding:"9px 12px", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <i className="ti ti-pool" style={{ color:"#4a148c", fontSize:16 }}/>
@@ -225,7 +235,7 @@ export default function RemittanceScreen({ onBack }) {
         )}
 
         {/* Direct to treasurer fresh */}
-        {freshVerifiedAmt > 0 && (
+        {hasAnythingFresh && freshVerifiedAmt > 0 && (
           <div style={{ background:"#e3f2fd", borderRadius:9, border:"1px solid #90caf9", padding:"9px 12px", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <i className="ti ti-send" style={{ color:"#1565c0", fontSize:16 }}/>
@@ -267,9 +277,13 @@ export default function RemittanceScreen({ onBack }) {
           </div>
         )}
 
-        {memberRows.length === 0 && (
-          <div style={{ textAlign:"center", color:"#aaa", fontSize:12, padding:"16px 0", marginBottom:10 }}>
-            No collections since last remittance
+        {!hasAnythingFresh && (
+          <div style={{ background:"#e8f5ee", borderRadius:9, padding:"12px 14px", marginBottom:10, display:"flex", gap:8, alignItems:"center" }}>
+            <i className="ti ti-circle-check" style={{ color:GREEN, fontSize:20, flexShrink:0 }}/>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:GREEN }}>All clear — balance is zero</div>
+              <div style={{ fontSize:10, color:"#888", marginTop:2 }}>No new collections since last remittance on {lastRemitDate}</div>
+            </div>
           </div>
         )}
 
