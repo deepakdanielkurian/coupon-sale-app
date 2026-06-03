@@ -270,33 +270,24 @@ export default function RemittanceScreen({ onBack }) {
           </button>
         )}
 
-        {/* Remittance history */}
-        <div style={{ fontSize:10,fontWeight:700,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8 }}>
-          Remittance history ({remittances.length})
-        </div>
-        {remittances.length===0&&<div style={{ textAlign:"center",color:"#aaa",fontSize:12,padding:"16px 0" }}>No remittances recorded yet</div>}
-        {remittances.map((r,i)=>(
-          <div key={r.id} style={{ background:"#fff",borderRadius:11,border:"1px solid #eee",padding:"10px 12px",marginBottom:8 }}>
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6 }}>
-              <div>
-                <div style={{ fontSize:14,fontWeight:700,color:"#1565c0" }}>{fmt(r.amount)}</div>
-                <div style={{ fontSize:10,color:"#888",marginTop:1 }}>{r.date} · To {r.toWhom} · {(r.paymentMode||"cash").toUpperCase()}</div>
-              </div>
-              {i===0&&<span style={{ fontSize:9,fontWeight:700,background:"#e3f2fd",color:"#1565c0",padding:"2px 7px",borderRadius:6 }}>Latest</span>}
+        {/* Remittance summary — no clutter, just the totals */}
+        <div style={{ background:"#fff",borderRadius:12,border:"1px solid #eee",padding:"12px 14px",marginBottom:12 }}>
+          <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a",marginBottom:10 }}>Remittance summary</div>
+          {[
+            ["Total sent to treasurer", fmt(totalRemitted), "#1565c0"],
+            ["Number of remittances",   remittances.length,  "#1a1a1a"],
+            remittances.length>0 && ["Last sent on", remittances[0]?.date||"—", "#888"],
+          ].filter(Boolean).map(([l,v,c])=>(
+            <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"0.5px solid #f5f5f5",fontSize:12 }}>
+              <span style={{ color:"#777" }}>{l}</span>
+              <span style={{ fontWeight:700,color:c }}>{v}</span>
             </div>
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:5 }}>
-              <div style={{ background:"#f5f7f5",borderRadius:7,padding:"5px 8px" }}>
-                <div style={{ fontSize:9,color:"#aaa" }}>Balance before</div>
-                <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{fmt(r.balanceBefore||0)}</div>
-              </div>
-              <div style={{ background:"#e8f5ee",borderRadius:7,padding:"5px 8px" }}>
-                <div style={{ fontSize:9,color:"#aaa" }}>Balance after</div>
-                <div style={{ fontSize:12,fontWeight:700,color:GREEN }}>{fmt(r.balanceAfter||0)}</div>
-              </div>
-            </div>
-            {r.notes&&<div style={{ fontSize:10,color:"#888",marginTop:6 }}>{r.notes}</div>}
+          ))}
+          <div style={{ marginTop:10,background:"#e3f2fd",borderRadius:8,padding:"8px 10px",display:"flex",gap:7,alignItems:"center" }}>
+            <i className="ti ti-info-circle" style={{ color:"#1565c0",fontSize:14,flexShrink:0 }}/>
+            <span style={{ fontSize:11,color:"#1565c0" }}>Full remittance history with details is available in <strong>Reports → Remittance Report</strong></span>
           </div>
-        ))}
+        </div>
       </div>
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>

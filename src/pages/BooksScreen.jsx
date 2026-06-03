@@ -7,279 +7,196 @@ import { Badge, SectionLabel, InputField, PrimaryButton, OutlineButton, InfoChip
 
 const GREEN = "#1a6b3c";
 
-// ── Common ticket sell form ───────────────────────────────────
+// ── Common ticket sell form — clean rewrite ─────────────────
 function SellCommonTicketForm({ book, onSave, onCancel }) {
   const { data } = useApp();
-  const stats     = getBookStats(book, data.collections);
-  const remaining = book.ticketCount - stats.totalSold;
+  const bookCols   = data.collections.filter(c => c.bookId === book.id);
+  const totalSold  = bookCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
+  const remaining  = book.ticketCount - totalSold;
 
-  const [date,     setDate]    = useState(new Date().toISOString().split("T")[0]);
-  const [payMode,  setPayMode] = useState("cash");
-  const [entries,  setEntries] = useState([{ ticketNo:"", buyerName:"" }]);
-  const [rangeFrom,setRangeFrom]= useState("");
-  const [rangeTo,  setRangeTo] = useState("");
-  const [rangeCount,setRangeCount] = useState(""); // new: count field, syncs with from/to
-  const [buyerForRange, setBuyerForRange] = useState("");
-  const [errors,   setErrors]  = useState([]);
+  const [date,    setDate]    = useState(new Date().toISOString().split("T")[0]);
+  const [payMode, setPayMode] = useState("cash");
+  // Each entry: { ticketNo, buyerName }
+  const [entries, setEntries] = useState([{ ticketNo:"", buyerName:"" }]);
+  const [errors,  setErrors]  = useState({});
 
-  // Computed from live entries state
-  const validEntries  = entries.filter(e => e.ticketNo !== "" && e.buyerName.trim() !== "");
-  const filledCount   = entries.filter(e => e.ticketNo !== "").length;
-  const totalAmt      = entries.length * 1000;
-
+  function updateEntry(i, key, val) {
+    setEntries(prev => prev.map((e,idx) => idx===i ? {...e,[key]:val} : e));
+  }
   function addEntry() {
+    if (entries.length >= remaining) return;
     setEntries(prev => [...prev, { ticketNo:"", buyerName:"" }]);
   }
   function removeEntry(i) {
-    setEntries(prev => prev.filter((_,idx) => idx !== i));
-  }
-  function updateEntry(i, key, val) {
-    setEntries(prev => prev.map((e,idx) => idx === i ? {...e,[key]:val} : e));
+    if (entries.length === 1) return;
+    setEntries(prev => prev.filter((_,idx) => idx!==i));
   }
 
-  // Quick range fill: type 18001 to 18005 → auto-creates 5 entries
-  function applyRange() {
-    const f = parseInt(rangeFrom), t = parseInt(rangeTo);
-    if (isNaN(f)||isNaN(t)||t<f) return;
-    if (f < book.ticketFrom || t > book.ticketTo) return;
-    const count = t - f + 1;
-    if (count > remaining) return;
-    const newEntries = Array.from({length:count}, (_,i) => ({
-      ticketNo: String(f+i),
-      buyerName: buyerForRange,
-    }));
-    setEntries(newEntries);
-    setRangeFrom(""); setRangeTo(""); setRangeCount(""); setBuyerForRange("");
-  }
+  // Live stats
+  const filledCount = entries.filter(e => e.ticketNo && e.buyerName.trim()).length;
+  const totalAmt    = entries.length * 1000;
 
   function validate() {
-    const e = entries.map((en,i) => {
-      const err = {};
-      const tno = parseInt(en.ticketNo);
-      if (!en.ticketNo.toString().trim()) err.ticketNo = "Required";
-      else if (isNaN(tno)||tno<book.ticketFrom||tno>book.ticketTo) err.ticketNo = `${book.ticketFrom}–${book.ticketTo}`;
-      else {
-        const dup = entries.findIndex((x,j)=>j!==i&&x.ticketNo.toString()===en.ticketNo.toString())!==-1;
-        if (dup) err.ticketNo = "Duplicate";
-      }
-      if (!en.buyerName.trim()) err.buyerName = "Required";
-      return err;
+    const e = {};
+    const usedNos = new Set();
+    entries.forEach((en,i) => {
+      const n = parseInt(en.ticketNo);
+      if (!en.ticketNo) { e[`t${i}`] = "Required"; return; }
+      if (isNaN(n)||n<book.ticketFrom||n>book.ticketTo) { e[`t${i}`] = `${book.ticketFrom}–${book.ticketTo}`; return; }
+      if (usedNos.has(n)) { e[`t${i}`] = "Duplicate"; return; }
+      usedNos.add(n);
+      if (!en.buyerName.trim()) e[`b${i}`] = "Required";
     });
     setErrors(e);
-    return e.every(er=>Object.keys(er).length===0);
+    return Object.keys(e).length === 0;
   }
 
   function submit() {
     if (!validate()) return;
-    if (entries.length > remaining) return;
     onSave({
-      id:`C-${Date.now()}`,
-      bookId:book.id,
-      memberId:null,
-      isCommon:true,
+      id: `C-${Date.now()}`,
+      bookId: book.id,
+      memberId: null,
+      isCommon: true,
       date,
-      ticketsSold:entries.length,
-      amount:entries.length*1000,
-      paymentMode:payMode,
-      ticketEntries:entries.map(e=>({ ticketNo:parseInt(e.ticketNo), buyerName:e.buyerName.trim(), amount:1000 })),
-      remarks:`Common book - ${entries.length} ticket(s)`,
+      ticketsSold: entries.length,
+      amount: entries.length * 1000,
+      paymentMode: payMode,
+      paidTo: "coordinator",
+      verifiedByCoordinator: true,
+      ticketEntries: entries.map(e => ({
+        ticketNo: parseInt(e.ticketNo),
+        buyerName: e.buyerName.trim(),
+        amount: 1000,
+      })),
+      remarks: `Common book — ${entries.length} ticket(s)`,
     });
   }
 
   const PURPLE = "#4a148c";
 
   return (
-    <div style={{background:"#f5f7f5",flex:1,overflowY:"auto",padding:"12px 12px 20px"}}>
+    <div style={{ background:"#f5f7f5", flex:1, overflowY:"auto", padding:"12px 12px 20px" }}>
 
       {/* Book info */}
-      <div style={{background:"#f3e5f5",borderRadius:12,padding:"10px 12px",marginBottom:10,border:"1px solid #ce93d830"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{ background:"#f3e5f5", borderRadius:11, border:"1px solid #ce93d830", padding:"10px 12px", marginBottom:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
-            <div style={{fontSize:13,fontWeight:700,color:PURPLE}}>Common Book {book.bookNumber}</div>
-            <div style={{fontSize:10,color:"#7b1fa2",marginTop:2}}>Tickets {book.ticketFrom}–{book.ticketTo} · {remaining} remaining</div>
+            <div style={{ fontSize:13, fontWeight:700, color:PURPLE }}>Common Book {book.bookNumber}</div>
+            <div style={{ fontSize:10, color:"#7b1fa2", marginTop:2 }}>Tickets {book.ticketFrom}–{book.ticketTo}</div>
           </div>
-          <div style={{background:PURPLE,color:"#fff",fontSize:9,fontWeight:700,padding:"3px 8px",borderRadius:7}}>COMMON</div>
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontSize:11}}>
-          <span style={{color:GREEN,fontWeight:700}}>Sold: {stats.totalSold}/{book.ticketCount}</span>
-          <span style={{color:"#e65100"}}>Pending: {remaining} tickets</span>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:12, fontWeight:700, color:PURPLE }}>{remaining} remaining</div>
+            <div style={{ fontSize:10, color:"#888" }}>{totalSold} sold of {book.ticketCount}</div>
+          </div>
         </div>
       </div>
 
       {/* Date */}
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:5}}>Sale date *</div>
+      <div style={{ marginBottom:10 }}>
+        <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:4 }}>Sale date *</div>
         <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-          style={{width:"100%",background:"#fff",border:`1.5px solid ${GREEN}`,borderRadius:9,padding:"10px 11px",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+          style={{ width:"100%", background:"#fff", border:`1.5px solid ${PURPLE}`, borderRadius:9, padding:"9px 11px", fontSize:13, outline:"none", boxSizing:"border-box" }}/>
       </div>
 
-      {/* Quick range fill — works both ways */}
-      <div style={{background:"#fff",borderRadius:10,border:`1.5px solid ${PURPLE}`,padding:"10px 12px",marginBottom:12}}>
-        <div style={{fontSize:11,fontWeight:700,color:PURPLE,marginBottom:6}}>
-          <i className="ti ti-wand" style={{marginRight:5}}/>Quick fill by ticket range
+      {/* Live total */}
+      <div style={{ background:PURPLE, borderRadius:10, padding:"10px 14px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div>
+          <div style={{ fontSize:10, color:"rgba(255,255,255,0.6)" }}>{entries.length} ticket{entries.length!==1?"s":""} · {filledCount} filled</div>
+          <div style={{ fontSize:22, fontWeight:700, color:"#fff" }}>{fmt(totalAmt)}</div>
         </div>
-        <div style={{fontSize:10,color:"#888",marginBottom:8,lineHeight:1.5}}>
-          Type ticket numbers (e.g. 18001 to 18005) — count auto-shows. Or type count and "From" — "To" auto-fills. Then tap Auto-fill.
-        </div>
-        <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"flex-end"}}>
-          <div style={{flex:1}}>
-            <div style={{fontSize:10,color:"#555",marginBottom:3,fontWeight:600}}>From ticket *</div>
-            <input type="number" value={rangeFrom}
-              onChange={e=>{
-                setRangeFrom(e.target.value);
-                // If count is set, auto-calculate To
-                if(rangeCount && e.target.value){
-                  const f=parseInt(e.target.value), c=parseInt(rangeCount);
-                  if(!isNaN(f)&&!isNaN(c)) setRangeTo(String(f+c-1));
-                }
-              }}
-              placeholder={String(book.ticketFrom)}
-              style={{width:"100%",background:"#f8faf8",border:`1.5px solid ${rangeFrom?PURPLE:"#e0e0e0"}`,borderRadius:8,padding:"9px 9px",fontSize:14,fontWeight:700,outline:"none",boxSizing:"border-box",color:PURPLE}}/>
-          </div>
-          <div style={{paddingBottom:10,color:"#aaa",fontWeight:700}}>—</div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:10,color:"#555",marginBottom:3,fontWeight:600}}>To ticket *</div>
-            <input type="number" value={rangeTo}
-              onChange={e=>{
-                setRangeTo(e.target.value);
-                // Auto-update count
-                if(rangeFrom && e.target.value){
-                  const f=parseInt(rangeFrom), t=parseInt(e.target.value);
-                  if(!isNaN(f)&&!isNaN(t)&&t>=f) setRangeCount(String(t-f+1));
-                }
-              }}
-              placeholder={String(book.ticketTo)}
-              style={{width:"100%",background:"#f8faf8",border:`1.5px solid ${rangeTo?PURPLE:"#e0e0e0"}`,borderRadius:8,padding:"9px 9px",fontSize:14,fontWeight:700,outline:"none",boxSizing:"border-box",color:PURPLE}}/>
-          </div>
-          <div style={{flex:0.7}}>
-            <div style={{fontSize:10,color:"#555",marginBottom:3,fontWeight:600}}>Count</div>
-            <input type="number" value={rangeCount}
-              onChange={e=>{
-                setRangeCount(e.target.value);
-                // Auto-calculate To from From + count
-                if(rangeFrom && e.target.value){
-                  const f=parseInt(rangeFrom), c=parseInt(e.target.value);
-                  if(!isNaN(f)&&!isNaN(c)&&c>0) setRangeTo(String(f+c-1));
-                }
-              }}
-              placeholder="count"
-              style={{width:"100%",background:"#f3e5f5",border:`1.5px solid ${rangeCount?PURPLE:"#e0e0e0"}`,borderRadius:8,padding:"9px 6px",fontSize:14,fontWeight:700,outline:"none",boxSizing:"border-box",color:PURPLE,textAlign:"center"}}/>
-          </div>
-        </div>
-        {/* Live preview */}
-        {rangeFrom&&rangeTo&&parseInt(rangeTo)>=parseInt(rangeFrom)&&(
-          <div style={{background:"#f3e5f5",borderRadius:7,padding:"6px 9px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:11,color:PURPLE,fontWeight:600}}>
-              {parseInt(rangeTo)-parseInt(rangeFrom)+1} tickets · {rangeFrom} to {rangeTo}
-            </span>
-            <span style={{fontSize:12,fontWeight:700,color:PURPLE}}>
-              {fmt((parseInt(rangeTo)-parseInt(rangeFrom)+1)*1000)}
-            </span>
-          </div>
+        <div style={{ textAlign:"right", fontSize:10, color:"rgba(255,255,255,0.6)" }}>Rs.1,000 each</div>
+      </div>
+
+      {/* Ticket entries */}
+      <div style={{ fontSize:11, fontWeight:700, color:PURPLE, marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <span>Ticket entries</span>
+        {entries.length < remaining && (
+          <button onClick={addEntry}
+            style={{ background:PURPLE, color:"#fff", border:"none", borderRadius:7, padding:"4px 12px", fontSize:11, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+            <i className="ti ti-plus" style={{ fontSize:12 }}/> Add ticket
+          </button>
         )}
-        <div style={{marginBottom:8}}>
-          <div style={{fontSize:10,color:"#555",marginBottom:3,fontWeight:600}}>Buyer name for all (optional — leave blank to fill individually)</div>
-          <input value={buyerForRange} onChange={e=>setBuyerForRange(e.target.value)}
-            placeholder="e.g. Rajan — or leave blank for separate names"
-            style={{width:"100%",background:"#f8faf8",border:"1px solid #e0e0e0",borderRadius:8,padding:"8px 9px",fontSize:12,outline:"none",boxSizing:"border-box"}}/>
-        </div>
-        <button onClick={applyRange}
-          disabled={!rangeFrom||!rangeTo||parseInt(rangeTo)<parseInt(rangeFrom)||parseInt(rangeTo)>book.ticketTo||parseInt(rangeFrom)<book.ticketFrom}
-          style={{width:"100%",background:(!rangeFrom||!rangeTo||parseInt(rangeTo)<parseInt(rangeFrom))?"#e0e0e0":PURPLE,color:"#fff",border:"none",borderRadius:8,padding:"10px",fontSize:12,fontWeight:700,cursor:(!rangeFrom||!rangeTo)?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-          <i className="ti ti-wand" style={{fontSize:15}}/>
-          Auto-fill {rangeFrom&&rangeTo&&parseInt(rangeTo)>=parseInt(rangeFrom)?`${parseInt(rangeTo)-parseInt(rangeFrom)+1} ticket entries`:"entries"} from range
-        </button>
       </div>
 
-      {/* Live summary — fully dynamic, recalculates on every render */}
-      {(()=>{
-        const liveCount = entries.length;
-        const liveAmt   = liveCount * 1000;
-        // Range preview: if from/to typed but not applied yet, show preview
-        const previewCount = (rangeFrom && rangeTo && parseInt(rangeTo)>=parseInt(rangeFrom))
-          ? parseInt(rangeTo)-parseInt(rangeFrom)+1 : 0;
-        return (
-          <div style={{background:PURPLE,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div>
-                <div style={{fontSize:10,color:"rgba(255,255,255,0.6)"}}>{liveCount} ticket{liveCount!==1?"s":""} in list</div>
-                <div style={{fontSize:24,fontWeight:700,color:"#fff"}}>{fmt(liveAmt)}</div>
-                <div style={{fontSize:10,color:"rgba(255,255,255,0.6)",marginTop:1}}>{liveCount} × Rs.1,000</div>
-              </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:9,color:"rgba(255,255,255,0.6)"}}>per ticket</div>
-                <div style={{fontSize:14,fontWeight:700,color:"#ce93d8"}}>Rs.1,000</div>
-                {liveCount>remaining&&<div style={{fontSize:9,color:"#ff8a80",marginTop:3}}>Exceeds remaining!</div>}
-              </div>
+      {entries.map((entry, i) => (
+        <div key={i} style={{ background:"#fff", borderRadius:10, border:`1px solid ${errors[`t${i}`]||errors[`b${i}`]?"#fca5a5":"#eee"}`, padding:"10px 12px", marginBottom:8 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:PURPLE }}>Ticket {i+1}</div>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              {entry.ticketNo&&entry.buyerName&&<span style={{ fontSize:9, fontWeight:700, background:"#f3e5f5", color:PURPLE, padding:"2px 6px", borderRadius:5 }}>✓ Filled</span>}
+              {entries.length > 1 && (
+                <button onClick={()=>removeEntry(i)}
+                  style={{ background:"#ffebee", border:"1px solid #fca5a5", color:"#dc2626", borderRadius:6, padding:"3px 8px", fontSize:10, fontWeight:700, cursor:"pointer" }}>
+                  Remove
+                </button>
+              )}
             </div>
-            {previewCount>0&&(
-              <div style={{background:"rgba(255,255,255,0.15)",borderRadius:7,padding:"5px 8px",fontSize:10,color:"#fff"}}>
-                Range preview: {previewCount} tickets ({rangeFrom}–{rangeTo}) = {fmt(previewCount*1000)}
-              </div>
-            )}
           </div>
-        );
-      })()}
 
-      {/* Individual entries */}
-      <div style={{fontSize:11,fontWeight:700,color:PURPLE,textTransform:"uppercase",letterSpacing:"0.4px",marginBottom:8}}>
-        Ticket entries ({entries.length})
-      </div>
+          <div style={{ display:"flex", gap:8 }}>
+            {/* Ticket number */}
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>
+                Ticket no. <span style={{ color:"#aaa",fontWeight:400 }}>({book.ticketFrom}–{book.ticketTo})</span>
+              </div>
+              <input
+                type="number"
+                value={entry.ticketNo}
+                onChange={e => updateEntry(i, "ticketNo", e.target.value)}
+                placeholder={String(book.ticketFrom + i)}
+                style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${errors[`t${i}`]?"#dc2626":entry.ticketNo?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:14, fontWeight:700, color:PURPLE, outline:"none", boxSizing:"border-box" }}
+              />
+              {errors[`t${i}`] && <div style={{ fontSize:9, color:"#dc2626", marginTop:2 }}>{errors[`t${i}`]}</div>}
+            </div>
 
-      {entries.map((entry,i)=>(
-        <div key={i} style={{background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:8}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-            <div style={{fontSize:11,fontWeight:700,color:PURPLE}}>Ticket {i+1}</div>
-            {entries.length>1&&(
-              <button onClick={()=>removeEntry(i)}
-                style={{background:"#ffebee",border:"1px solid #fca5a5",color:"#dc2626",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,cursor:"pointer"}}>
-                Remove
-              </button>
-            )}
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:10,fontWeight:600,color:"#555",marginBottom:4}}>Ticket number *</div>
-              <input type="number" value={entry.ticketNo} onChange={e=>updateEntry(i,"ticketNo",e.target.value)}
-                placeholder={`${book.ticketFrom}–${book.ticketTo}`}
-                style={{width:"100%",background:"#f8faf8",border:`1.5px solid ${errors[i]?.ticketNo?"#dc2626":entry.ticketNo?PURPLE:"#e0e0e0"}`,borderRadius:8,padding:"8px 9px",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
-              {errors[i]?.ticketNo&&<div style={{fontSize:10,color:"#dc2626",marginTop:2}}>{errors[i].ticketNo}</div>}
-            </div>
-            <div style={{flex:2}}>
-              <div style={{fontSize:10,fontWeight:600,color:"#555",marginBottom:4}}>Buyer name *</div>
-              <input type="text" value={entry.buyerName} onChange={e=>updateEntry(i,"buyerName",e.target.value)}
-                placeholder="e.g. Thankachan P."
-                style={{width:"100%",background:"#f8faf8",border:`1.5px solid ${errors[i]?.buyerName?"#dc2626":entry.buyerName?PURPLE:"#e0e0e0"}`,borderRadius:8,padding:"8px 9px",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
-              {errors[i]?.buyerName&&<div style={{fontSize:10,color:"#dc2626",marginTop:2}}>{errors[i].buyerName}</div>}
+            {/* Buyer name */}
+            <div style={{ flex:2 }}>
+              <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>Buyer name *</div>
+              <input
+                type="text"
+                value={entry.buyerName}
+                onChange={e => updateEntry(i, "buyerName", e.target.value)}
+                placeholder="e.g. Rajan Kumar"
+                style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${errors[`b${i}`]?"#dc2626":entry.buyerName?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:12, outline:"none", boxSizing:"border-box" }}
+              />
+              {errors[`b${i}`] && <div style={{ fontSize:9, color:"#dc2626", marginTop:2 }}>{errors[`b${i}`]}</div>}
             </div>
           </div>
-          <div style={{marginTop:5,fontSize:11,color:GREEN,fontWeight:600,textAlign:"right"}}>Rs.1,000</div>
+
+          <div style={{ marginTop:6, textAlign:"right", fontSize:10, color:"#888", fontWeight:600 }}>Rs.1,000</div>
         </div>
       ))}
 
-      {entries.length<remaining&&(
+      {entries.length < remaining && (
         <button onClick={addEntry}
-          style={{width:"100%",background:"#fff",color:PURPLE,border:"1.5px dashed #ce93d8",borderRadius:10,padding:"10px",fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:10}}>
+          style={{ width:"100%", background:"#fff", color:PURPLE, border:`1.5px dashed ${PURPLE}`, borderRadius:10, padding:"10px", fontSize:12, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
           + Add another ticket
         </button>
       )}
 
       {/* Payment mode */}
-      <div style={{fontSize:11,fontWeight:700,color:"#555",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.4px"}}>Payment mode</div>
-      <div style={{display:"flex",gap:6,marginBottom:12}}>
-        {["cash","upi","bank"].map(m=>(
-          <div key={m} onClick={()=>setPayMode(m)}
-            style={{flex:1,border:`${payMode===m?"2px":"1px"} solid ${payMode===m?PURPLE:"#e0e0e0"}`,borderRadius:9,padding:"9px 4px",background:payMode===m?"#f3e5f5":"#fff",textAlign:"center",fontSize:12,color:payMode===m?PURPLE:"#888",fontWeight:payMode===m?700:400,cursor:"pointer"}}>
-            <i className={`ti ${m==="cash"?"ti-cash":m==="upi"?"ti-device-mobile":"ti-building-bank"}`} style={{fontSize:15,display:"block",marginBottom:3}}/>
-            {m.toUpperCase()}
-          </div>
-        ))}
+      <div style={{ marginBottom:12 }}>
+        <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:6 }}>Payment mode</div>
+        <div style={{ display:"flex", gap:6 }}>
+          {["cash","upi","bank"].map(m=>(
+            <div key={m} onClick={()=>setPayMode(m)}
+              style={{ flex:1, border:`${payMode===m?"2px":"1px"} solid ${payMode===m?PURPLE:"#e0e0e0"}`, borderRadius:9, padding:"9px 4px", background:payMode===m?"#f3e5f5":"#fff", textAlign:"center", fontSize:12, color:payMode===m?PURPLE:"#888", fontWeight:payMode===m?700:400, cursor:"pointer" }}>
+              <i className={`ti ${m==="cash"?"ti-cash":m==="upi"?"ti-device-mobile":"ti-building-bank"}`} style={{ fontSize:16, display:"block", marginBottom:3 }}/>
+              {m.toUpperCase()}
+            </div>
+          ))}
+        </div>
       </div>
 
-      <PrimaryButton onClick={submit} disabled={entries.length===0||entries.length>remaining}>
-        <i className="ti ti-ticket"/> Save {entries.length} common ticket{entries.length!==1?"s":""}
-      </PrimaryButton>
-      <OutlineButton onClick={onCancel}>Cancel</OutlineButton>
+      <button onClick={submit}
+        style={{ width:"100%", background:`linear-gradient(135deg,${PURPLE},#6a1b9a)`, color:"#fff", border:"none", borderRadius:11, padding:"13px", fontSize:13, fontWeight:700, cursor:"pointer", boxShadow:"0 4px 14px rgba(74,20,140,0.3)", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+        <i className="ti ti-ticket" style={{ fontSize:16 }}/> Save {entries.length} common ticket{entries.length!==1?"s":""} — {fmt(totalAmt)}
+      </button>
+      <button onClick={onCancel}
+        style={{ width:"100%", background:"#fff", color:"#888", border:"1px solid #e0e0e0", borderRadius:11, padding:"11px", fontSize:12, fontWeight:600, cursor:"pointer", marginTop:8 }}>
+        Cancel
+      </button>
     </div>
   );
 }

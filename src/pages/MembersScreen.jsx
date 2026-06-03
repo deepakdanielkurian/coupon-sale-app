@@ -336,7 +336,7 @@ function MemberDetail({ member, onEdit }) {
           </div>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:15,fontWeight:700,color:"#1a1a1a" }}>{member.firstName} {member.lastName}</div>
-            <div style={{ display:"flex",alignItems:"center",gap:6,marginTop:3 }}><Badge type={member.label}/><span style={{ fontSize:10,color:"#888" }}>{member.id}</span></div>
+            <div style={{ display:"flex",alignItems:"center",gap:6,marginTop:3 }}><Badge type={member.label}/><span style={{ fontSize:10,color:"#888" }}>{member.memberId||member.id}</span></div>
           </div>
           <button onClick={onEdit} style={{ background:"#fff",border:`1px solid ${GREEN}`,color:GREEN,borderRadius:7,padding:"5px 10px",fontSize:11,fontWeight:600,cursor:"pointer" }}>
             <i className="ti ti-edit"/> Edit
@@ -466,8 +466,8 @@ function MemberDetail({ member, onEdit }) {
                         />
                       ) : (
                         <button onClick={()=>setCollectingBook(book.id)}
-                          style={{ width:"100%",background:`linear-gradient(135deg,${GREEN},#2e7d32)`,color:"#fff",border:"none",borderRadius:8,padding:"9px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5 }}>
-                          <i className="ti ti-cash" style={{ fontSize:14 }}/> Collect Cash
+                          style={{ width:"100%",background:`linear-gradient(135deg,#1a6b3c,#2e7d32)`,color:"#fff",border:"none",borderRadius:8,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:"0 3px 10px rgba(26,107,60,0.25)" }}>
+                          <i className="ti ti-cash" style={{ fontSize:15 }}/> Collect Cash
                         </button>
                       )
                     ) : (
@@ -496,32 +496,50 @@ function MemberDetail({ member, onEdit }) {
                 const book=books.find(b=>b.id===col.bookId);
                 const mode=col.paymentMode||"cash";
                 return(
-                  <div key={col.id} style={{ background:"#fff",borderRadius:10,border:`1px solid ${col.paidTo==="treasurer"&&!col.verifiedByCoordinator?"#ffe082":"#eee"}`,padding:"10px 12px",marginBottom:6 }}>
-                    <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                      <div style={{ width:32,height:32,borderRadius:8,background:MODE_BG[mode],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                        <i className={`ti ${MODE_ICONS[mode]}`} style={{ color:MODE_COLORS[mode],fontSize:16 }}/>
+                  <div key={col.id} style={{ background:"#fff",borderRadius:10,border:`1px solid ${col.paidTo==="treasurer"&&!col.verifiedByCoordinator?"#ffe082":"#eee"}`,padding:"11px 13px",marginBottom:8 }}>
+                    {/* Row 1: Amount + mode badge */}
+                    <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
+                      <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                        <div style={{ width:34,height:34,borderRadius:9,background:MODE_BG[mode],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                          <i className={`ti ${MODE_ICONS[mode]}`} style={{ color:MODE_COLORS[mode],fontSize:17 }}/>
+                        </div>
+                        <div>
+                          <div style={{ fontSize:15,fontWeight:700,color:"#1a1a1a" }}>{fmt(col.amount)}</div>
+                          <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:6,background:MODE_BG[mode],color:MODE_COLORS[mode] }}>{mode.toUpperCase()}</span>
+                        </div>
                       </div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{fmt(col.amount)}</div>
-                        <div style={{ fontSize:10,color:"#888",marginTop:1 }}>{col.date} · Book {book?.bookNumber||"—"} · {col.ticketsSold} tickets</div>
+                      {col.paidTo==="treasurer"?(
+                        <div style={{ textAlign:"right" }}>
+                          <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"#e3f2fd",color:"#1565c0",display:"block",marginBottom:3 }}>Direct — treasurer</span>
+                          <span style={{ fontSize:9,fontWeight:700,color:col.verifiedByCoordinator?"#1a6b3c":"#f57c00" }}>
+                            <i className={`ti ${col.verifiedByCoordinator?"ti-circle-check":"ti-clock"}`} style={{ fontSize:10,marginRight:2 }}/>
+                            {col.verifiedByCoordinator?"Verified":"Pending verify"}
+                          </span>
+                        </div>
+                      ):(
+                        <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:6,background:"#e8f5ee",color:"#1a6b3c" }}>
+                          <i className="ti ti-circle-check" style={{ fontSize:9,marginRight:2 }}/>To coordinator
+                        </span>
+                      )}
+                    </div>
+                    {/* Row 2: Detail lines */}
+                    <div style={{ borderTop:"1px solid #f5f5f5",paddingTop:6,display:"flex",flexDirection:"column",gap:3 }}>
+                      <div style={{ display:"flex",justifyContent:"space-between",fontSize:11 }}>
+                        <span style={{ color:"#888" }}>Date</span>
+                        <span style={{ fontWeight:600,color:"#1a1a1a" }}>{col.date}</span>
                       </div>
-                      <div style={{ textAlign:"right" }}>
-                        <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:7,background:MODE_BG[mode],color:MODE_COLORS[mode] }}>{mode.toUpperCase()}</span>
-                        {col.paidTo==="treasurer"?(
-                          <div style={{ marginTop:3 }}>
-                            <span style={{ fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:5,background:"#e3f2fd",color:"#1565c0" }}>Direct–treasurer</span>
-                            <div style={{ fontSize:9,marginTop:2,color:col.verifiedByCoordinator?"#1a6b3c":"#f57c00",fontWeight:600 }}>
-                              <i className={`ti ${col.verifiedByCoordinator?"ti-circle-check":"ti-clock"}`} style={{ fontSize:9,marginRight:2 }}/>
-                              {col.verifiedByCoordinator?"Verified":"Pending verify"}
-                            </div>
-                          </div>
-                        ):(
-                          <div style={{ marginTop:3 }}>
-                            <span style={{ fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:5,background:"#e8f5ee",color:"#1a6b3c" }}>To coordinator</span>
-                            <div style={{ fontSize:9,color:"#1a6b3c",marginTop:2 }}><i className="ti ti-circle-check" style={{ fontSize:9,marginRight:2 }}/>Settled</div>
-                          </div>
-                        )}
+                      <div style={{ display:"flex",justifyContent:"space-between",fontSize:11 }}>
+                        <span style={{ color:"#888" }}>Book</span>
+                        <span style={{ fontWeight:600,color:"#1a1a1a" }}>Book {book?.bookNumber||"—"} · Tickets {book?.ticketFrom||""}–{book?.ticketTo||""}</span>
                       </div>
+                      <div style={{ display:"flex",justifyContent:"space-between",fontSize:11 }}>
+                        <span style={{ color:"#888" }}>Tickets sold</span>
+                        <span style={{ fontWeight:600,color:"#1a1a1a" }}>{col.ticketsSold} tickets</span>
+                      </div>
+                      {col.remarks&&<div style={{ display:"flex",justifyContent:"space-between",fontSize:11 }}>
+                        <span style={{ color:"#888" }}>Remarks</span>
+                        <span style={{ fontWeight:600,color:"#555",maxWidth:"60%",textAlign:"right" }}>{col.remarks}</span>
+                      </div>}
                     </div>
                   </div>
                 );
