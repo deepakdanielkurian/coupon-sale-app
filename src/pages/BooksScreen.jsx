@@ -288,7 +288,7 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
 function CollectCashForm({ book, onSave, onStop, onCancel }) {
   const { data } = useApp();
   const stats    = getBookStats(book, data.collections);
-  const member   = data.members.find(m => m.id === book.memberId);
+  const member = data.members.find(m => m.id===book.memberId || m.memberId===book.memberId);
   const series   = getSeriesFromBook(book.bookNumber);
   const effective = stats.effective;
   const remaining = effective - stats.totalSold;
@@ -785,7 +785,11 @@ export default function BooksScreen({ triggerCollect }) {
 
         {filtered.map(book=>{
           const stats  = getBookStats(book,data.collections);
-          const member = data.members.find(m=>m.id===book.memberId);
+          // Check Firestore doc ID first, then the NCB-2026-xxx field stored in member data
+          const member = data.members.find(m => {
+            if (!book.memberId) return false;
+            return m.id === book.memberId || m.memberId === book.memberId;
+          });
           const pct    = Math.round((stats.totalSold/book.ticketCount)*100);
           const s      = getSeriesFromBook(book.bookNumber);
           const barC   = book.status==="complete"?GREEN:book.status==="ongoing"?"#4caf50":"#e53935";

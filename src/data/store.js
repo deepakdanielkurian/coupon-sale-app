@@ -40,7 +40,11 @@ export function getBookStats(book, collections) {
 }
 
 export function getMemberStats(memberId, books, collections) {
-  const mb = books.filter(b => b.memberId === memberId);
+  // Match by Firestore doc ID OR by NCB-2026-xxx field (for backwards compatibility)
+  const mb = books.filter(b => {
+    if (!b.memberId || !memberId) return false;
+    return b.memberId === memberId;
+  });
   let totalCollected = 0, totalPending = 0, totalTickets = 0, soldTickets = 0;
   let toCoordinator = 0, directTreasurer = 0, pendingVerify = 0;
   mb.forEach(b => {

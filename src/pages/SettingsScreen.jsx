@@ -250,8 +250,7 @@ export default function SettingsScreen({ onSubScreen }) {
       {can.viewLogs() && (
         <Section title="Admin tools">
           <Row icon="ti-activity"         iconBg="#f3e5f5" iconColor="#6a1b9a" label="Activity log"    sub="All actions by all users"       badge={`${logs?.length||0}`} onClick={()=>onSubScreen("logs")}/>
-          <Row icon="ti-send"            iconBg="#e8f5ee" iconColor="#1a6b3c" label="Remittance to treasurer" sub="Record money sent to treasurer"                   onClick={()=>onSubScreen("remittance")}/>
-          <Row icon="ti-send"             iconBg="#e8f5ee" iconColor={GREEN}    label="Remittance to treasurer" sub="Record & view summary"                             onClick={()=>onSubScreen("remittance")}/>
+          <Row icon="ti-send" iconBg="#e8f5ee" iconColor={GREEN} label="Remittance to treasurer" sub="Record & view summary" onClick={()=>onSubScreen("remittance")}/>
           <Row icon="ti-database-export"  iconBg="#e3f2fd" iconColor="#1565c0" label="Backup & export"           sub="Save & download data snapshots"                     onClick={()=>onSubScreen("backup")}/>
         </Section>
       )}
