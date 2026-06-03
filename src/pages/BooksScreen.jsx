@@ -7,65 +7,85 @@ import { Badge, SectionLabel, InputField, PrimaryButton, OutlineButton, InfoChip
 
 const GREEN = "#1a6b3c";
 
-// ── Common ticket sell form — clean rewrite ─────────────────
+// ── Common ticket sell form ──────────────────────────────────
 function SellCommonTicketForm({ book, onSave, onCancel }) {
   const { data } = useApp();
-  const bookCols     = data.collections.filter(c => c.bookId === book.id);
-  const totalSold    = bookCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
-  const remaining    = book.ticketCount - totalSold;
-  const firstSuggest = String(book.ticketFrom + totalSold); // next unsold ticket
+  const GREEN  = "#1a6b3c";
+  const PURPLE = "#4a148c";
 
-  const [date,    setDate]    = useState(new Date().toISOString().split("T")[0]);
-  const [payMode, setPayMode] = useState("cash");
-  const [paidTo,  setPaidTo]  = useState("coordinator");
-  const isDirect = paidTo === "treasurer";
-  // Each entry auto-starts at next available ticket number
-  const [entries, setEntries] = useState([{ ticketNo: firstSuggest, buyerName:"" }]);
-  const [errors,  setErrors]  = useState({});
+  // All previous sales for this book
+  const bookCols = data.collections.filter(c => c.bookId === book.id);
+  const totalSold = bookCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
+  const remaining = book.ticketCount - totalSold;
 
-  function updateEntry(i, key, val) {
-    setEntries(prev => prev.map((e,idx) => idx===i ? {...e,[key]:val} : e));
-  }
-  function addEntry() {
-    if (entries.length >= remaining) return;
-    setEntries(prev => {
-      const nums = prev.map(e => parseInt(e.ticketNo)).filter(n => !isNaN(n) && n >= book.ticketFrom && n <= book.ticketTo);
-      const maxNum = nums.length > 0 ? Math.max(...nums) : null;
-      // Skip already-sold ticket numbers
-      const nextNo = nextUnsoldFrom(maxNum !== null ? maxNum + 1 : book.ticketFrom + totalSold);
-      return [...prev, { ticketNo: nextNo, buyerName:"" }];
-    });
-  }
-  function removeEntry(i) {
-    if (entries.length === 1) return;
-    setEntries(prev => prev.filter((_,idx) => idx!==i));
+  // Set of every ticket number already sold — locked forever
+  const soldNos = new Set(
+    bookCols.flatMap(c => (c.ticketEntries||[]).map(e => Number(e.ticketNo)))
+           .filter(n => !isNaN(n) && n > 0)
+  );
+
+  // Find next unsold ticket starting from n
+  function nextUnsold(n) {
+    while (n <= book.ticketTo) {
+      if (!soldNos.has(n)) return n;
+      n++;
+    }
+    return null;
   }
 
-  // Live stats
+  const initNo = nextUnsold(book.ticketFrom) ?? book.ticketFrom;
+
+  const [date,    setDate]   = useState(new Date().toISOString().split("T")[0]);
+  const [payMode, setPayMode]= useState("cash");
+  const [paidTo,  setPaidTo] = useState("coordinator");
+  const [entries, setEntries]= useState([{ ticketNo: String(initNo), buyerName:"" }]);
+  const [errors,  setErrors] = useState({});
+
+  const isDirect    = paidTo === "treasurer";
   const filledCount = entries.filter(e => e.ticketNo && e.buyerName.trim()).length;
   const totalAmt    = entries.length * 1000;
 
+  function updateEntry(i, key, val) {
+    setEntries(prev => prev.map((e,idx) => idx===i ? {...e,[key]:val} : e));
+    if (key === "ticketNo") {
+      const n = Number(val);
+      if (!isNaN(n) && soldNos.has(n)) {
+        setErrors(prev => ({...prev, [`t${i}`]: "Already sold — pick another"}));
+      } else {
+        setErrors(prev => { const x={...prev}; delete x[`t${i}`]; return x; });
+      }
+    }
+    if (key === "buyerName") {
+      setErrors(prev => { const x={...prev}; delete x[`b${i}`]; return x; });
+    }
+  }
+
+  function addEntry() {
+    if (entries.length >= remaining) return;
+    const currentNums = entries.map(e => Number(e.ticketNo)).filter(n => !isNaN(n) && n >= book.ticketFrom);
+    const maxCurrent  = currentNums.length > 0 ? Math.max(...currentNums) : initNo - 1;
+    const next        = nextUnsold(maxCurrent + 1) ?? nextUnsold(book.ticketFrom);
+    setEntries(prev => [...prev, { ticketNo: next ? String(next) : "", buyerName:"" }]);
+  }
+
+  function removeEntry(i) {
+    if (entries.length === 1) return;
+    setEntries(prev => prev.filter((_,idx) => idx !== i));
+    setErrors(prev => { const x={...prev}; delete x[`t${i}`]; delete x[`b${i}`]; return x; });
+  }
+
   function validate() {
     const e = {};
-    const usedNos = new Set();
+    const usedInBatch = new Set();
     for (let i = 0; i < entries.length; i++) {
-      const en = entries[i];
-      const raw = String(en.ticketNo).trim();
-      const n   = parseInt(raw);
-      if (!raw) {
-        e[`t${i}`] = "Required";
-      } else if (isNaN(n) || n < book.ticketFrom || n > book.ticketTo) {
-        e[`t${i}`] = `Must be ${book.ticketFrom}–${book.ticketTo}`;
-      } else if (soldTicketNos.has(n)) {
-        e[`t${i}`] = "Already sold — pick another";
-      } else if (usedNos.has(n)) {
-        e[`t${i}`] = "Duplicate in this entry";
-      } else {
-        usedNos.add(n);
-      }
-      if (!en.buyerName.trim()) {
-        e[`b${i}`] = "Buyer name required";
-      }
+      const raw = String(entries[i].ticketNo).trim();
+      const n   = Number(raw);
+      if (!raw)                                        e[`t${i}`] = "Required";
+      else if (isNaN(n)||n<book.ticketFrom||n>book.ticketTo) e[`t${i}`] = `Must be ${book.ticketFrom}–${book.ticketTo}`;
+      else if (soldNos.has(n))                         e[`t${i}`] = "Already sold — pick another";
+      else if (usedInBatch.has(n))                     e[`t${i}`] = "Duplicate in this batch";
+      else                                             usedInBatch.add(n);
+      if (!entries[i].buyerName.trim())                e[`b${i}`] = "Required";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -84,16 +104,10 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
       paymentMode: payMode,
       paidTo,
       verifiedByCoordinator: paidTo === "coordinator",
-      ticketEntries: entries.map(e => ({
-        ticketNo: parseInt(e.ticketNo),
-        buyerName: e.buyerName.trim(),
-        amount: 1000,
-      })),
+      ticketEntries: entries.map(e => ({ ticketNo: Number(e.ticketNo), buyerName: e.buyerName.trim(), amount: 1000 })),
       remarks: `Common book — ${entries.length} ticket(s)`,
     });
   }
-
-  const PURPLE = "#4a148c";
 
   return (
     <div style={{ background:"#f5f7f5", flex:1, overflowY:"auto", padding:"12px 12px 20px" }}>
@@ -110,6 +124,12 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
             <div style={{ fontSize:10, color:"#888" }}>{totalSold} sold of {book.ticketCount}</div>
           </div>
         </div>
+        {soldNos.size > 0 && (
+          <div style={{ marginTop:8, background:"rgba(74,20,140,0.08)", borderRadius:7, padding:"5px 8px", fontSize:10, color:PURPLE }}>
+            <i className="ti ti-lock" style={{ marginRight:4, fontSize:11 }}/>
+            {soldNos.size} ticket{soldNos.size!==1?"s":""} already sold and locked
+          </div>
+        )}
       </div>
 
       {/* Date */}
@@ -123,14 +143,14 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
       <div style={{ background:PURPLE, borderRadius:10, padding:"10px 14px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div>
           <div style={{ fontSize:10, color:"rgba(255,255,255,0.6)" }}>{entries.length} ticket{entries.length!==1?"s":""} · {filledCount} filled</div>
-          <div style={{ fontSize:22, fontWeight:700, color:"#fff" }}>{fmt(totalAmt)}</div>
+          <div style={{ fontSize:22, fontWeight:700, color:"#fff" }}>{entries.length * 1000 === 0 ? "Rs.0" : `Rs.${(entries.length*1000).toLocaleString()}`}</div>
         </div>
         <div style={{ textAlign:"right", fontSize:10, color:"rgba(255,255,255,0.6)" }}>Rs.1,000 each</div>
       </div>
 
       {/* Ticket entries */}
-      <div style={{ fontSize:11, fontWeight:700, color:PURPLE, marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <span>Ticket entries</span>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+        <div style={{ fontSize:11, fontWeight:700, color:PURPLE }}>Ticket entries</div>
         {entries.length < remaining && (
           <button onClick={addEntry}
             style={{ background:PURPLE, color:"#fff", border:"none", borderRadius:7, padding:"4px 12px", fontSize:11, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
@@ -139,73 +159,57 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
         )}
       </div>
 
-      {entries.map((entry, i) => (
-        <div key={i} style={{ background:"#fff", borderRadius:10, border:`1px solid ${errors[`t${i}`]||errors[`b${i}`]?"#fca5a5":"#eee"}`, padding:"10px 12px", marginBottom:8 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:PURPLE }}>Ticket {i+1}</div>
-            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              {entry.ticketNo&&entry.buyerName&&<span style={{ fontSize:9, fontWeight:700, background:"#f3e5f5", color:PURPLE, padding:"2px 6px", borderRadius:5 }}>✓ Filled</span>}
-              {entries.length > 1 && (
-                <button onClick={()=>removeEntry(i)}
-                  style={{ background:"#ffebee", border:"1px solid #fca5a5", color:"#dc2626", borderRadius:6, padding:"3px 8px", fontSize:10, fontWeight:700, cursor:"pointer" }}>
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div style={{ display:"flex", gap:8 }}>
-            {/* Ticket number */}
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span>Ticket no.</span>
-                <span style={{ color:"#aaa", fontWeight:400, fontSize:9 }}>{book.ticketFrom}–{book.ticketTo}</span>
+      {entries.map((entry, i) => {
+        const n = Number(entry.ticketNo);
+        const isSold = !isNaN(n) && soldNos.has(n);
+        return (
+          <div key={i} style={{ background:"#fff", borderRadius:10, border:`1px solid ${isSold?"#dc2626":errors[`t${i}`]||errors[`b${i}`]?"#fca5a5":"#eee"}`, padding:"10px 12px", marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:PURPLE }}>Ticket {i+1}</div>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                {entry.ticketNo&&entry.buyerName&&!isSold&&(
+                  <span style={{ fontSize:9, fontWeight:700, background:"#f3e5f5", color:PURPLE, padding:"2px 6px", borderRadius:5 }}>✓ Filled</span>
+                )}
+                {isSold && (
+                  <span style={{ fontSize:9, fontWeight:700, background:"#ffebee", color:"#dc2626", padding:"2px 6px", borderRadius:5 }}>
+                    <i className="ti ti-lock" style={{ fontSize:9, marginRight:2 }}/>Sold
+                  </span>
+                )}
+                {entries.length > 1 && (
+                  <button onClick={()=>removeEntry(i)}
+                    style={{ background:"#ffebee", border:"1px solid #fca5a5", color:"#dc2626", borderRadius:6, padding:"3px 8px", fontSize:10, fontWeight:700, cursor:"pointer" }}>
+                    Remove
+                  </button>
+                )}
               </div>
-              <input
-                type="number"
-                value={entry.ticketNo}
-                onChange={e => {
-                  const val = e.target.value;
-                  updateEntry(i, "ticketNo", val);
-                  // Live check: mark as sold immediately while typing
-                  const n = parseInt(val);
-                  if (!isNaN(n) && soldTicketNos.has(n)) {
-                    setErrors(prev => ({ ...prev, [`t${i}`]: "Already sold — pick another" }));
-                  } else {
-                    setErrors(prev => { const x={...prev}; delete x[`t${i}`]; return x; });
-                  }
-                }}
-                placeholder={String(book.ticketFrom + totalSold + i)}
-                style={{ width:"100%", background: soldTicketNos.has(parseInt(entry.ticketNo))?"#fff5f5":"#f8faf8", border:`1.5px solid ${errors[`t${i}`]?"#dc2626":soldTicketNos.has(parseInt(entry.ticketNo))?"#dc2626":entry.ticketNo?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:14, fontWeight:700, color:soldTicketNos.has(parseInt(entry.ticketNo))?"#dc2626":PURPLE, outline:"none", boxSizing:"border-box" }}
-              />
-              {errors[`t${i}`] && <div style={{ fontSize:9, color:"#dc2626", marginTop:2 }}>{errors[`t${i}`]}</div>}
-              {!errors[`t${i}`] && entry.ticketNo && soldTicketNos.has(parseInt(entry.ticketNo)) && (
-                <div style={{ fontSize:9, color:"#dc2626", marginTop:2, fontWeight:600 }}>
-                  <i className="ti ti-lock" style={{ fontSize:9, marginRight:3 }}/>Ticket {entry.ticketNo} already sold — choose another
+            </div>
+
+            <div style={{ display:"flex", gap:8 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4, display:"flex", justifyContent:"space-between" }}>
+                  <span>Ticket no.</span>
+                  <span style={{ color:"#aaa", fontWeight:400, fontSize:9 }}>{book.ticketFrom}–{book.ticketTo}</span>
                 </div>
-              )}
-            </div>
+                <input type="number" value={entry.ticketNo}
+                  onChange={e => updateEntry(i, "ticketNo", e.target.value)}
+                  placeholder={String(initNo + i)}
+                  style={{ width:"100%", background:isSold?"#fff5f5":"#f8faf8", border:`1.5px solid ${isSold||errors[`t${i}`]?"#dc2626":entry.ticketNo?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:14, fontWeight:700, color:isSold?"#dc2626":PURPLE, outline:"none", boxSizing:"border-box" }}/>
+                {errors[`t${i}`] && <div style={{ fontSize:9, color:"#dc2626", marginTop:2 }}>{errors[`t${i}`]}</div>}
+              </div>
 
-            {/* Buyer name */}
-            <div style={{ flex:2 }}>
-              <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>Buyer name *</div>
-              <input
-                type="text"
-                value={entry.buyerName}
-                onChange={e => {
-                  updateEntry(i, "buyerName", e.target.value);
-                  setErrors(prev => { const n={...prev}; delete n[`b${i}`]; return n; });
-                }}
-                placeholder="e.g. Rajan Kumar"
-                style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${errors[`b${i}`]?"#dc2626":entry.buyerName?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:12, outline:"none", boxSizing:"border-box" }}
-              />
-              {errors[`b${i}`] && <div style={{ fontSize:9, color:"#dc2626", marginTop:2 }}>{errors[`b${i}`]}</div>}
+              <div style={{ flex:2 }}>
+                <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>Buyer name *</div>
+                <input type="text" value={entry.buyerName}
+                  onChange={e => updateEntry(i, "buyerName", e.target.value)}
+                  placeholder="e.g. Rajan Kumar"
+                  style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${errors[`b${i}`]?"#dc2626":entry.buyerName?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:12, outline:"none", boxSizing:"border-box" }}/>
+                {errors[`b${i}`] && <div style={{ fontSize:9, color:"#dc2626", marginTop:2 }}>{errors[`b${i}`]}</div>}
+              </div>
             </div>
+            <div style={{ marginTop:6, textAlign:"right", fontSize:10, color:"#888", fontWeight:600 }}>Rs.1,000</div>
           </div>
-
-          <div style={{ marginTop:6, textAlign:"right", fontSize:10, color:"#888", fontWeight:600 }}>Rs.1,000</div>
-        </div>
-      ))}
+        );
+      })}
 
       {entries.length < remaining && (
         <button onClick={addEntry}
@@ -214,7 +218,7 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
         </button>
       )}
 
-      {/* Who received? */}
+      {/* Who received */}
       <div style={{ marginBottom:10 }}>
         <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:6 }}>Who received this money? *</div>
         {[
@@ -254,7 +258,7 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
 
       <button onClick={submit}
         style={{ width:"100%", background:`linear-gradient(135deg,${PURPLE},#6a1b9a)`, color:"#fff", border:"none", borderRadius:11, padding:"13px", fontSize:13, fontWeight:700, cursor:"pointer", boxShadow:"0 4px 14px rgba(74,20,140,0.3)", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
-        <i className="ti ti-ticket" style={{ fontSize:16 }}/> Save {entries.length} common ticket{entries.length!==1?"s":""} — {fmt(totalAmt)}
+        <i className="ti ti-ticket" style={{ fontSize:16 }}/> Save {entries.length} ticket{entries.length!==1?"s":""} — Rs.{entries.length*1000}
       </button>
       <button onClick={onCancel}
         style={{ width:"100%", background:"#fff", color:"#888", border:"1px solid #e0e0e0", borderRadius:11, padding:"11px", fontSize:12, fontWeight:600, cursor:"pointer", marginTop:8 }}>

@@ -51,7 +51,7 @@ function ReportPreview({ reportId, data }) {
         <div style={{ fontSize:26,fontWeight:700,color:"#fff" }}>{fmt(totalC)}</div>
         <div style={{ fontSize:10,color:"rgba(255,255,255,0.55)",marginTop:2 }}>{sold} of {TOTAL_TICKETS.toLocaleString()} tickets sold</div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10 }}>
-          {[["Books",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending",fmt(totalV-totalC)],["Members",members.length]].map(([l,v])=>(
+          {[["Books",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending",fmt(totalV-totalC)],["Members with books",members.length]].map(([l,v])=>(
             <div key={l} style={{ background:"rgba(255,255,255,0.15)",borderRadius:7,padding:"6px 8px" }}>
               <div style={{ fontSize:9,color:"rgba(255,255,255,0.55)" }}>{l}</div>
               <div style={{ fontSize:12,fontWeight:700,color:"#fff" }}>{v}</div>
@@ -113,13 +113,13 @@ function ReportPreview({ reportId, data }) {
       <SectionLabel>Book-wise detail ({books.filter(b=>!b.isCommon).length} member books)</SectionLabel>
       {books.filter(b=>!b.isCommon).map(book=>{
         const s=getBookStats(book,collections);
-        const m=members.find(x=>x.id===book.memberId);
+        const m=members.find(x=>x.id===book.memberId||x.memberId===book.memberId);
         const pct=Math.round((s.totalSold/book.ticketCount)*100);
         return(
           <div key={book.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"8px 10px",marginBottom:5 }}>
             <div style={{ display:"flex",justifyContent:"space-between",marginBottom:4 }}>
               <div>
-                <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{m?`${m.firstName} ${m.lastName}`:"—"}</div>
+                <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{book.isCommon?"Common book":m?`${m.firstName} ${m.lastName}`:"—"}</div>
                 <div style={{ fontSize:10,color:"#888" }}>Book {book.bookNumber} · Tickets {book.ticketFrom}–{book.ticketTo}</div>
               </div>
               <StatusBadge status={book.status}/>
@@ -142,12 +142,12 @@ function ReportPreview({ reportId, data }) {
       {members.map(m=>{
         const s=getMemberStats(m.id,books,collections);
         const cfg=LABELS[m.label]||LABELS.committee_member;
-        const mCols=collections.filter(c=>c.memberId===m.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+        const mCols=collections.filter(c=>c.memberId===m.id||m.memberId===c.memberId).sort((a,b)=>new Date(b.date)-new Date(a.date));
         return(
           <div key={m.id} style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:10 }}>
             <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingBottom:8,borderBottom:"1px solid #f5f5f5" }}>
               <div style={{ width:34,height:34,borderRadius:"50%",background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:cfg.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><Badge type={m.label}/></div>
+              <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><Badge type={m.label}/>{m.memberId&&<span style={{fontSize:9,color:"#aaa",marginLeft:5}}>{m.memberId}</span>}</div>
               <div style={{ textAlign:"right" }}><div style={{ fontSize:12,fontWeight:700,color:GREEN }}>{fmt(s.totalCollected)}</div>{s.totalPending>0&&<div style={{ fontSize:10,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
             </div>
             {s.memberBooks.map(book=>{
@@ -318,7 +318,7 @@ function ReportPreview({ reportId, data }) {
       <div>
         <Hdr/>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10 }}>
-          {[["Total collected",fmt(totalC),GREEN],["Total remitted",fmt(totalRemitted),"#1565c0"],["Balance in hand",fmt(balance),balance>0?"#e65100":GREEN],["Remittances",remittances.length,"#1a1a1a"]].map(([l,v,c])=>(
+          {[["Total collected",fmt(totalC),GREEN],["Total remitted",fmt(totalRemitted),"#1565c0"],["Pending to send to treasurer",fmt(balance),balance>0?"#e65100":GREEN],["Remittances",remittances.length,"#1a1a1a"]].map(([l,v,c])=>(
             <div key={l} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"8px 10px" }}>
               <div style={{ fontSize:10,color:"#888" }}>{l}</div>
               <div style={{ fontSize:14,fontWeight:700,color:c,marginTop:2 }}>{v}</div>
@@ -363,7 +363,7 @@ function ReportPreview({ reportId, data }) {
             </div>
           </div>
         ))}
-        <TotalBar label="Balance currently in hand" value={fmt(balance)}/>
+        <TotalBar label="Pending to send to treasurer" value={fmt(balance)}/>
       </div>
     );
   }

@@ -113,7 +113,7 @@ function addSummary(doc, data, startY) {
     const s = getMemberStats(m.id,books,collections);
     return [`${m.firstName} ${m.lastName}`,LABELS[m.label]?.label||m.label,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,fmt(s.totalCollected),fmt(s.totalPending),s.totalPending===0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
   });
-  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Label","Books","Tickets","Collected","Pending","Status"]],body:memRows,columnStyles:{4:{textColor:GREEN},5:{textColor:AMBER}}});
+  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Category","Books","Tickets","Collected","Pending","Status"]],body:memRows,columnStyles:{4:{textColor:GREEN},5:{textColor:AMBER}}});
   return doc.lastAutoTable.finalY+10;
 }
 
@@ -136,7 +136,7 @@ function addCouponSale(doc, data, startY) {
     const s = getBookStats(book,collections);
     const m = members.find(x=>x.id===book.memberId);
     const sr = getSeriesFromBook(book.bookNumber);
-    return [book.bookNumber,sr?`${sr.name} (${sr.ticketsPerBook}t)`:"",m?`${m.firstName} ${m.lastName}`:"—",`${book.ticketFrom}–${book.ticketTo}`,`${s.totalSold}/${book.ticketCount}`,fmt(s.totalCollected),fmt(s.pending),book.issueDate||"—",book.status==="complete"?"Complete":book.status==="ongoing"?"Ongoing":"Not started"];
+    return [book.bookNumber,sr?`${sr.name} (${sr.ticketsPerBook}t)`:"",book.isCommon?"Common book":m?`${m.firstName} ${m.lastName}`:"—",`${book.ticketFrom}–${book.ticketTo}`,`${s.totalSold}/${book.ticketCount}`,fmt(s.totalCollected),fmt(s.pending),book.issueDate||"—",book.status==="complete"?"Complete":book.status==="ongoing"?"Ongoing":"Not started"];
   });
   autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Book","Series","Member","Ticket Range","Sold","Collected","Pending","Issued","Status"]],body:rows,columnStyles:{5:{textColor:GREEN},6:{textColor:AMBER}}});
   return doc.lastAutoTable.finalY+10;
@@ -210,7 +210,7 @@ function addPending(doc, data, startY) {
   }
 
   const rows = pm.map(m=>[`${m.firstName} ${m.lastName}`,LABELS[m.label]?.label||"",m.phone||"—",m.memberBooks.length,fmt(m.totalCollected),fmt(m.totalPending),`${m.memberBooks.filter(b=>getBookStats(b,collections).pending>0).length} book(s)`]);
-  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Label","Phone","Books","Collected","Pending","Pending Books"]],body:rows,columnStyles:{4:{textColor:GREEN},5:{textColor:[163,45,45],fontStyle:"bold"}}});
+  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Category","Phone","Books","Collected","Pending","Pending Books"]],body:rows,columnStyles:{4:{textColor:GREEN},5:{textColor:[163,45,45],fontStyle:"bold"}}});
   y = doc.lastAutoTable.finalY+8;
   return grandBox(doc,y,"Total outstanding balance",fmt(totalPending));
 }
@@ -235,7 +235,7 @@ function addInventory(doc, data, startY) {
     const rows = sb.map(book=>{
       const stats=getBookStats(book,collections);
       const m=members.find(x=>x.id===book.memberId);
-      return [book.bookNumber,`${book.ticketFrom}–${book.ticketTo}`,m?`${m.firstName} ${m.lastName}`:"—",book.issueDate||"—",`${stats.totalSold}/${book.ticketCount}`,fmt(stats.totalCollected),book.status==="complete"?"Complete":book.status==="ongoing"?"Ongoing":"Not started"];
+      return [book.bookNumber,`${book.ticketFrom}–${book.ticketTo}`,book.isCommon?"Common book":m?`${m.firstName} ${m.lastName}`:"—",book.issueDate||"—",`${stats.totalSold}/${book.ticketCount}`,fmt(stats.totalCollected),book.status==="complete"?"Complete":book.status==="ongoing"?"Ongoing":"Not started"];
     });
     autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Book","Ticket Range","Assigned To","Issue Date","Sold","Collected","Status"]],body:rows,columnStyles:{5:{textColor:GREEN}}});
     y = doc.lastAutoTable.finalY+8;
@@ -260,8 +260,8 @@ function addHistory(doc, data, startY) {
   y = secTitle(doc,"All collection entries (newest first)",y);
   const rows = sorted.map(col=>{
     const book=books.find(b=>b.id===col.bookId);
-    const m=members.find(x=>x.id===col.memberId);
-    return [col.date,m?`${m.firstName} ${m.lastName}`:"—",book?.bookNumber||"—",col.ticketsSold,fmt(col.amount),(col.paymentMode||"cash").toUpperCase(),col.remarks||"—"];
+    const m=members.find(x=>x.id===col.memberId||x.memberId===col.memberId);
+    return [col.date,book.isCommon?"Common book":m?`${m.firstName} ${m.lastName}`:"—",book?.bookNumber||"—",col.ticketsSold,fmt(col.amount),(col.paymentMode||"cash").toUpperCase(),col.remarks||"—"];
   });
   autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Date","Member","Book","Tickets","Amount","Mode","Remarks"]],body:rows,columnStyles:{4:{textColor:GREEN}}});
   y = doc.lastAutoTable.finalY+8;
@@ -400,7 +400,7 @@ export function addRemittanceReport(doc, data, startY) {
   const bw=(w-28-6)/3;
   statBox(doc,14,y,bw,"Total collected",fmt(totalCollected),GREEN);
   statBox(doc,14+bw+3,y,bw,"Total remitted",fmt(totalRemitted),BLUE);
-  statBox(doc,14+(bw+3)*2,y,bw,"Balance in hand",fmt(balanceInHand),balanceInHand>0?AMBER:GREEN);
+  statBox(doc,14+(bw+3)*2,y,bw,"Pending to send to treasurer",fmt(balanceInHand),balanceInHand>0?AMBER:GREEN);
   y+=26;
 
   // Mode breakdown
