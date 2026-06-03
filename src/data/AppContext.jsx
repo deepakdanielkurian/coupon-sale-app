@@ -6,6 +6,7 @@ import {
   addMember as fbAdd, updateMember as fbUpdate, deleteMember as fbDelete,
   addBook as fbAddBook, updateBook as fbUpdateBook,
   addCollection as fbAddCol, addLog as fbAddLog,
+  addRemittance as fbAddRemittance, listenRemittances,
   addAppUser as fbAddUser, updateAppUser as fbUpdateUser, deleteAppUser as fbDeleteUser,
   listenAppUsers, seedSuperAdmin,
   seedConfig, getConfig,
@@ -24,6 +25,7 @@ export function AppProvider({ children }) {
   const [collections,setCollections]= useState([]);
   const [logs,       setLogs]       = useState([]);
   const [appUsers,   setAppUsers]   = useState([]);
+  const [remittances,setRemittances] = useState([]);
   const [org,        setOrg]        = useState(DEFAULT_ORG);
   const [loading,    setLoading]    = useState(true);
   const [currentUser, setCurrentUser] = useState(() => {
@@ -46,6 +48,7 @@ export function AppProvider({ children }) {
     const u2 = listenBooks(setBooks);
     const u3 = listenCollections(setCollections);
     const u4 = listenLogs(setLogs);
+    const u6 = listenRemittances(setRemittances);
     const u5 = listenAppUsers(users => {
       setAppUsers(users);
       // Keep session in sync if current user data changed
@@ -89,7 +92,7 @@ export function AppProvider({ children }) {
     manageUsers:  ()=>currentUser?.role==="super_admin",
   };
 
-  const data = { members, books, collections, logs, org, coordinator:{ name:currentUser?.name||"Coordinator", role:currentUser?.role||"super_admin" } };
+  const data = { members, books, collections, logs, remittances, org, coordinator:{ name:currentUser?.name||"Coordinator", role:currentUser?.role||"super_admin" } };
 
   // ── Member CRUD ───────────────────────────────────────────
   async function addMember(m)        { try{ await fbAdd(m);           await log("ADD_MEMBER",    `Added ${m.firstName} ${m.lastName}`);  showToast("Member added"); }       catch(e){ showToast("Failed","error"); } }
@@ -104,12 +107,13 @@ export function AppProvider({ children }) {
   async function addCollection(c)    { try{ await fbAddCol(c);         await log("COLLECT_CASH",  `Rs.${c.amount} book ${c.bookId}`);    showToast("Cash collected!"); }     catch(e){ showToast("Failed","error"); } }
 
   // ── App users (super admin only) ──────────────────────────
+  async function addRemittance(r)  { try{ await fbAddRemittance(r); await log('ADD_REMITTANCE',`Rs.${r.amount} to ${r.toWhom}`); showToast('Remittance recorded'); } catch(e){ showToast('Failed','error'); } }
   async function addUser(u)          { try{ const id=await fbAddUser(u); await log("CREATE_USER",`Created user ${u.email} (${u.role})`); showToast(`${u.name} created`); }  catch(e){ showToast("Failed","error"); } }
   async function updateUser(id,u)    { try{ await fbUpdateUser(id,u); if(currentUser&&id===currentUser.id){ const updated={...currentUser,...u}; setCurrentUser(updated); localStorage.setItem(SESSION_KEY,JSON.stringify(updated)); } await log("EDIT_USER",`Updated user ${id}`); showToast("User updated"); } catch(e){ showToast("Failed","error"); } }
   async function deleteUser(id)      { try{ await fbDeleteUser(id);    await log("DELETE_USER",  `Deleted user ${id}`);                  showToast("User removed"); }        catch(e){ showToast("Failed","error"); } }
 
   return (
-    <AppContext.Provider value={{ data, loading, currentUser, appUsers, login, logout, can, addMember, updateMember, deleteMember, addBook, updateBook, addCollection, addUser, updateUser, deleteUser, showToast, toast }}>
+    <AppContext.Provider value={{ data, loading, currentUser, appUsers, login, logout, can, addMember, updateMember, deleteMember, addBook, updateBook, addCollection, addUser, updateUser, deleteUser, addRemittance, showToast, toast }}>
       {children}
       {toast && (
         <div style={{ position:"fixed", bottom:84, left:"50%", transform:"translateX(-50%)", background:toast.type==="success"?"#2e7d32":"#c62828", color:"#fff", padding:"11px 22px", borderRadius:11, fontSize:13, fontWeight:600, zIndex:9999, whiteSpace:"nowrap", boxShadow:"0 4px 20px rgba(0,0,0,0.18)", display:"flex", alignItems:"center", gap:8 }}>

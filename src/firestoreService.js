@@ -12,6 +12,7 @@ const C = {
   LOGS:        "activity_logs",
   USERS:       "app_users",
   BACKUPS:     "backups",
+  REMITTANCES: "remittances",
 };
 
 // ── Org config ────────────────────────────────────────────────
@@ -148,6 +149,19 @@ export function listenBackups(cb) {
 
 export async function deleteBackup(id) {
   await deleteDoc(doc(db, C.BACKUPS, id));
+}
+
+
+// ── Remittances ───────────────────────────────────────────────
+export async function addRemittance(data) {
+  const ref = await addDoc(collection(db, C.REMITTANCES), { ...data, createdAt: serverTimestamp() });
+  return ref.id;
+}
+export function listenRemittances(cb) {
+  return onSnapshot(
+    query(collection(db, C.REMITTANCES), orderBy("createdAt", "desc")),
+    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() })))
+  );
 }
 
 // Download backup as JSON file

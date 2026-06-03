@@ -10,6 +10,7 @@ import SettingsScreen       from "./pages/SettingsScreen";
 import ActivityLogScreen    from "./pages/ActivityLogScreen";
 import UserManagementScreen from "./pages/UserManagementScreen";
 import BackupScreen         from "./pages/BackupScreen";
+import RemittanceScreen     from "./pages/RemittanceScreen";
 
 const GREEN = "#1a6b3c";
 
@@ -132,7 +133,8 @@ function AppInner() {
   );
   if (sub==="logs"   && can.viewLogs())    return subScreenWrap(<ActivityLogScreen    onBack={()=>setSub(null)}/>);
   if (sub==="users"  && can.manageUsers()) return subScreenWrap(<UserManagementScreen onBack={()=>setSub(null)}/>);
-  if (sub==="backup" && can.manageUsers()) return subScreenWrap(<BackupScreen         onBack={()=>setSub(null)}/>);
+  if (sub==="backup"     && can.manageUsers()) return subScreenWrap(<BackupScreen         onBack={()=>setSub(null)}/>);
+  if (sub==="remittance" && can.manageUsers()) return subScreenWrap(<RemittanceScreen    onBack={()=>setSub(null)}/>);
 
   const fullScreen = ["books","members","reports"];
   const screens = {

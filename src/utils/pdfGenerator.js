@@ -292,7 +292,8 @@ export function generateCombinedPDF(selectedIds, data) {
     pending:   { title:"Pending / Defaulters Report",  fn:addPending,   subtitle:"Members with outstanding balance" },
     inventory: { title:"Book Inventory Report",        fn:addInventory, subtitle:"All 500 books — A/B/C series" },
     history:   { title:"Collection History Report",    fn:addHistory,   subtitle:"All payment entries chronologically" },
-    common:    { title:"Common Ticket Sales Report",   fn:addCommonTickets, subtitle:"Coordinator common books buyer-wise ticket details" },
+    common:    { title:"Common Ticket Sales Report",   fn:addCommonTickets,   subtitle:"Coordinator common books buyer-wise ticket details" },
+    remittance:{ title:"Remittance Report",             fn:addRemittanceReport,subtitle:"Money sent to treasurer — mode-wise & member-wise" },
   };
 
   selectedIds.forEach((id, idx) => {
@@ -333,67 +334,67 @@ export function printPDF(doc) {
   }
 }
 
-// ── COMMON TICKETS REPORT ─────────────────────────────────────
-export function addCommonTickets(doc, data, startY) {
-  const { books, collections } = data;
+
+// ── REMITTANCE REPORT ─────────────────────────────────────────
+export function addRemittanceReport(doc, data, startY) {
+  const { remittances, collections, members } = data;
   const w = pageW(doc); let y = startY;
 
-  const commonBooks = books.filter(b => b.isCommon);
-  const commonCols  = collections.filter(c => {
-    const book = books.find(b => b.id === c.bookId);
-    return book?.isCommon;
-  });
-  const totalAmt    = commonCols.reduce((s,c) => s+(c.amount||0), 0);
-  const totalTickets= commonCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
+  const totalCollected = collections.reduce((s,c)=>s+(c.amount||0),0);
+  const totalRemitted  = remittances.reduce((s,r)=>s+(r.amount||0),0);
+  const balanceInHand  = totalCollected - totalRemitted;
+
+  // Mode breakdown from collections
+  const byMode = {cash:0,upi:0,bank:0};
+  collections.forEach(c=>{ byMode[c.paymentMode||"cash"]+=(c.amount||0); });
 
   const bw=(w-28-6)/3;
-  statBox(doc,14,y,bw,"Common books",commonBooks.length);
-  statBox(doc,14+bw+3,y,bw,"Tickets sold",totalTickets,GREEN);
-  statBox(doc,14+(bw+3)*2,y,bw,"Total collected",fmt(totalAmt),GREEN);
+  statBox(doc,14,y,bw,"Total collected",fmt(totalCollected),GREEN);
+  statBox(doc,14+bw+3,y,bw,"Total remitted",fmt(totalRemitted),BLUE);
+  statBox(doc,14+(bw+3)*2,y,bw,"Balance in hand",fmt(balanceInHand),balanceInHand>0?AMBER:GREEN);
   y+=26;
 
-  if (commonCols.length===0) {
-    doc.setTextColor(...MUTED); doc.setFontSize(10);
-    doc.text("No common ticket sales recorded yet.",14,y+8);
-    return y+20;
-  }
-
-  y = secTitle(doc,"Common ticket sales — individual buyer details",y);
-
-  // Flatten all ticket entries with buyer names
-  const rows = [];
-  commonCols.forEach(col => {
-    const book = books.find(b=>b.id===col.bookId);
-    if (col.ticketEntries && col.ticketEntries.length>0) {
-      col.ticketEntries.forEach(entry => {
-        rows.push([
-          col.date,
-          book?.bookNumber||"—",
-          entry.ticketNo,
-          entry.buyerName||"—",
-          fmt(entry.amount||1000),
-          (col.paymentMode||"cash").toUpperCase(),
-        ]);
-      });
-    } else {
-      // Legacy entry without ticketEntries
-      rows.push([
-        col.date,
-        book?.bookNumber||"—",
-        "—",
-        "—",
-        fmt(col.amount),
-        (col.paymentMode||"cash").toUpperCase(),
-      ]);
-    }
-  });
-
-  autoTable(doc,{
-    startY:y,...TABLE_STYLES,
-    head:[["Date","Book","Ticket No.","Buyer Name","Amount","Mode"]],
-    body:rows,
-    columnStyles:{ 4:{textColor:GREEN} },
-  });
+  // Mode breakdown
+  y = secTitle(doc,"Collection by payment mode",y);
+  const modeRows = [
+    ["Cash",   fmt(byMode.cash)],
+    ["UPI",    fmt(byMode.upi)],
+    ["Bank",   fmt(byMode.bank)],
+    ["Total",  fmt(totalCollected)],
+  ];
+  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Mode","Amount"]],body:modeRows,columnStyles:{1:{textColor:GREEN}}});
   y = doc.lastAutoTable.finalY+8;
-  return grandBox(doc,y,"Total common ticket sales",fmt(totalAmt));
+
+  // Member-wise breakdown
+  y = secTitle(doc,"Member-wise collected (all time)",y);
+  const memberRows = members.map(m=>{
+    const mCols = collections.filter(c=>c.memberId===m.id);
+    const total  = mCols.reduce((s,c)=>s+(c.amount||0),0);
+    const mByMode= {cash:0,upi:0,bank:0};
+    mCols.forEach(c=>{ mByMode[c.paymentMode||"cash"]+=(c.amount||0); });
+    return [`${m.firstName} ${m.lastName}`, fmt(mByMode.cash), fmt(mByMode.upi), fmt(mByMode.bank), fmt(total)];
+  }).filter(r=>r[4]!==fmt(0));
+  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Cash","UPI","Bank","Total"]],body:memberRows,columnStyles:{4:{textColor:GREEN,fontStyle:"bold"}}});
+  y = doc.lastAutoTable.finalY+8;
+
+  // Remittance history
+  y = secTitle(doc,"Remittance history — money sent to treasurer",y);
+  if (remittances.length===0){
+    doc.setTextColor(...MUTED); doc.setFontSize(9);
+    doc.text("No remittances recorded yet.",14,y+5);
+    return y+15;
+  }
+  const remRows = remittances.map((r,i)=>[
+    r.date,
+    fmt(r.amount),
+    r.toWhom||"Treasurer",
+    (r.paymentMode||"cash").toUpperCase(),
+    fmt(r.balanceBefore||0),
+    fmt(r.balanceAfter||0),
+    r.notes||"—",
+  ]);
+  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Date","Amount","Sent To","Mode","Before","After","Notes"]],body:remRows,columnStyles:{1:{textColor:BLUE},5:{textColor:GREEN}}});
+  y = doc.lastAutoTable.finalY+8;
+
+  return grandBox(doc,y,"Balance currently in hand",fmt(balanceInHand));
 }

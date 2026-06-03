@@ -14,7 +14,9 @@ const REPORT_DEFS = [
   { id:"pending",   title:"Pending / Defaulters",        sub:"Members with outstanding balance",                   icon:"ti-alert-triangle", iconBg:"#FCEBEB",color:"#A32D2D",pages:"~1 page",   tags:["Overdue members","Amount","Contact"] },
   { id:"inventory", title:"Book Inventory Report",       sub:"All 500 books · A/B/C series · issued vs available", icon:"ti-books",          iconBg:"#EEEDFE",color:"#3C3489",pages:"~2 pages",  tags:["500 books","Series","Return status"] },
   { id:"history",   title:"Collection History",          sub:"All cash entries · date-wise · payment mode",        icon:"ti-calendar",       iconBg:"#EAF3DE",color:"#3B6D11",pages:"~5 pages",  tags:["All entries","Cash/UPI/Bank","Running total"] },
+  { id:"remittance",title:"Remittance Report",         sub:"Money sent to treasurer · mode-wise · member-wise",      icon:"ti-send",           iconBg:"#e3f2fd",color:"#1565c0",pages:"~2 pages",  tags:["Sent to treasurer","Cash/UPI/Bank","Per member"] },
   { id:"common",    title:"Common Ticket Sales",         sub:"Coordinator common books · each ticket with buyer name", icon:"ti-pool",           iconBg:"#f3e5f5",color:"#4a148c",pages:"~2 pages",  tags:["Common books","Ticket numbers","Buyer names"] },
+  { id:"remittance",title:"Remittance Report",             sub:"Money sent to treasurer · mode breakdown · balance",      icon:"ti-send",          iconBg:"#e3f2fd",color:"#1565c0",pages:"~2 pages",  tags:["Money sent","Mode breakdown","Balance in hand"] },
 ];
 
 function ReportPreview({ reportId, data }) {

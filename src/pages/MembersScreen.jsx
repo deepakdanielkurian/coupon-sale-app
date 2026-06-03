@@ -58,9 +58,30 @@ function InlineCollectCash({ book, onSave, onCancel }) {
           style={{ width:"100%", background:"#fff", border:`1.5px solid ${ticketsSold?GREEN:"#e0e0e0"}`, borderRadius:8, padding:"8px 10px", fontSize:12, outline:"none", boxSizing:"border-box" }}/>
       </div>
       {tickets>0&&(
-        <div style={{ background:"#e8f5ee", borderRadius:8, padding:"8px 10px", marginBottom:8, display:"flex", justifyContent:"space-between" }}>
-          <span style={{ fontSize:11, color:"#555" }}>Amount (auto)</span>
-          <span style={{ fontSize:14, fontWeight:700, color:GREEN }}>{fmt(amount)}</span>
+        <div style={{ marginBottom:8 }}>
+          <div style={{ background:"#e8f5ee", borderRadius:8, padding:"10px 12px", marginBottom:6, border:"1px solid #a5d6a7" }}>
+            <div style={{ fontSize:10, color:"#555", marginBottom:2 }}>Amount (auto-calculated)</div>
+            <div style={{ fontSize:26, fontWeight:700, color:GREEN }}>{fmt(amount)}</div>
+            <div style={{ fontSize:11, color:"#888" }}>{tickets} × Rs.1,000</div>
+          </div>
+          <div style={{ background:"#fff", borderRadius:8, border:"1px solid #eee", padding:"8px 10px" }}>
+            <div style={{ fontSize:11, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>After this entry</div>
+            {[
+              ["Tickets sold", `${stats.totalSold+tickets} / ${book.ticketCount}`],
+              ["Remaining",    `${remaining-tickets} left`, remaining-tickets===0?GREEN:"#e65100"],
+              ["Collected",    fmt(stats.totalCollected+amount), GREEN],
+              ["Balance",      fmt(Math.max(0,book.ticketCount*1000-stats.totalCollected-amount)), (book.ticketCount*1000-stats.totalCollected-amount)<=0?GREEN:"#e65100"],
+              ["Completion",   `${Math.round(((stats.totalSold+tickets)/book.ticketCount)*100)}%`],
+            ].map(([l,v,c],i,arr)=>(
+              <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:i<arr.length-1?"0.5px solid #f5f5f5":"none",fontSize:11 }}>
+                <span style={{ color:"#777" }}>{l}</span>
+                <span style={{ fontWeight:700, color:c||"#1a1a1a" }}>{v}</span>
+              </div>
+            ))}
+            <div style={{ marginTop:6, height:5, background:"#f0f0f0", borderRadius:3, overflow:"hidden" }}>
+              <div style={{ width:`${Math.round(((stats.totalSold+tickets)/book.ticketCount)*100)}%`, height:"100%", background:remaining-tickets===0?GREEN:"#4caf50", borderRadius:3 }}/>
+            </div>
+          </div>
         </div>
       )}
       <div style={{ display:"flex", gap:5, marginBottom:8 }}>
