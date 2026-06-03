@@ -613,15 +613,7 @@ function AssignBookForm({ onSave, onCancel }) {
 
 // ── Main Books Screen ─────────────────────────────────────────
 export default function BooksScreen({ triggerCollect }) {
-<<<<<<< HEAD
   const { data, addBook, addCollection, stopSelling, resetBook } = useApp();
-=======
-<<<<<<< HEAD
-  const { data, addBook, addCollection, stopSelling, resetBook } = useApp();
-=======
-  const { data, addBook, addCollection, stopSelling } = useApp();
->>>>>>> 30c0bd82fdc8c88a6b1ccc993e3a5d4f557a3198
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
   const [view,   setView]  = useState("list");
   const [selBook,setBook]  = useState(null);
   const [fSeries,setFS]    = useState("all");
@@ -768,18 +760,8 @@ export default function BooksScreen({ triggerCollect }) {
                 <span style={{ color:stats.pending>0?"#e65100":GREEN,fontWeight:stats.pending===0?700:400 }}>Pending: {fmt(stats.pending)}</span>
               </div>
               {stats.returned>0&&<div style={{ fontSize:10,color:"#e65100",marginBottom:book.status!=="complete"?8:0 }}><i className="ti ti-corner-down-left" style={{ fontSize:11,marginRight:3 }}/>{stats.returned} ticket{stats.returned!==1?"s":""} returned · {book.stopNotes||"Stopped selling"}</div>}
-<<<<<<< HEAD
               {book.status!=="complete" ? (
                 book.isCommon ? (
-=======
-<<<<<<< HEAD
-              {book.status!=="complete" ? (
-                book.isCommon ? (
-=======
-              {book.status!=="complete"&&(
-                book.isCommon?(
->>>>>>> 30c0bd82fdc8c88a6b1ccc993e3a5d4f557a3198
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
                   <button onClick={()=>{setBook(book);setView("common");}} style={{ width:"100%",background:"linear-gradient(135deg,#4a148c,#6a1b9a)",color:"#fff",border:"none",borderRadius:8,padding:"9px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5 }}>
                     <i className="ti ti-ticket"/> Sell common ticket
                   </button>

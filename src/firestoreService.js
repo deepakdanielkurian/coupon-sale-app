@@ -92,28 +92,14 @@ export async function updateBook(id, data) {
 export async function addCollection(data) {
   // Write the collection entry first
   const ref = await addDoc(collection(db, C.COLLECTIONS), { ...data, createdAt: serverTimestamp() });
-<<<<<<< HEAD
 
   // Now read ALL collections for this book (including the one just written)
   // to get the true running total — NO double-counting
-=======
-<<<<<<< HEAD
-
-  // Now read ALL collections for this book (including the one just written)
-  // to get the true running total — NO double-counting
-=======
-  // Auto-update book status based on tickets sold vs effective tickets
->>>>>>> 30c0bd82fdc8c88a6b1ccc993e3a5d4f557a3198
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
   const bookSnap = await getDoc(doc(db, C.BOOKS, data.bookId));
   if (bookSnap.exists()) {
     const book      = bookSnap.data();
     const returned  = book.returnedTickets || 0;
     const effective = book.ticketCount - returned;
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
 
     // Read all cols for this book AFTER the write (includes new entry)
     const allCols   = await getDocs(collection(db, C.COLLECTIONS));
@@ -123,26 +109,12 @@ export async function addCollection(data) {
     // Note: do NOT add data.ticketsSold again — it's already included above
 
     // Only auto-complete when 100% of effective tickets are sold
-<<<<<<< HEAD
-=======
-=======
-    const allCols   = await getDocs(collection(db, C.COLLECTIONS));
-    const totalSold = allCols.docs
-      .filter(d => d.data().bookId === data.bookId)
-      .reduce((s, d) => s + (d.data().ticketsSold || 0), 0) + data.ticketsSold;
-    // Auto-complete when all effective tickets are sold
->>>>>>> 30c0bd82fdc8c88a6b1ccc993e3a5d4f557a3198
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
     const status = totalSold >= effective ? "complete" : "ongoing";
     await updateDoc(doc(db, C.BOOKS, data.bookId), { status, updatedAt: serverTimestamp() });
   }
   return ref.id;
 }
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
 // ── Reset book status (fix wrongly-completed books) ──────────
 export async function resetBookStatus(bookId) {
   await updateDoc(doc(db, C.BOOKS, bookId), {
@@ -154,11 +126,6 @@ export async function resetBookStatus(bookId) {
   });
 }
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 30c0bd82fdc8c88a6b1ccc993e3a5d4f557a3198
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
 // ── Stop selling — record returned tickets and close book ──────
 export async function stopSelling(bookId, returnedTickets, notes) {
   await updateDoc(doc(db, C.BOOKS, bookId), {

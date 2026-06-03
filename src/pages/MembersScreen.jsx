@@ -263,15 +263,7 @@ function MemberForm({ onSave, onCancel, existing }) {
 
 // ── Member detail ─────────────────────────────────────────────
 function MemberDetail({ member, onEdit }) {
-<<<<<<< HEAD
   const { data, addCollection, stopSelling, resetBook } = useApp();
-=======
-<<<<<<< HEAD
-  const { data, addCollection, stopSelling, resetBook } = useApp();
-=======
-  const { data, addCollection, stopSelling } = useApp();
->>>>>>> 30c0bd82fdc8c88a6b1ccc993e3a5d4f557a3198
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
   const { books, collections } = data;
 
   // Always use live collections from context
@@ -398,15 +390,7 @@ function MemberDetail({ member, onEdit }) {
                 const pct        = effective>0?Math.round((totalSold/effective)*100):0;
                 const sr         = getSeriesFromBook(book.bookNumber);
                 const isOpen     = collectingBook===book.id;
-<<<<<<< HEAD
                 const isComplete = book.status==="complete";
-=======
-<<<<<<< HEAD
-                const isComplete = book.status==="complete";
-=======
-                const isComplete = book.status==="complete" || totalSold>=effective;
->>>>>>> 30c0bd82fdc8c88a6b1ccc993e3a5d4f557a3198
->>>>>>> 32265964e0b698c55336ad41196de38de4be0904
 
                 return(
                   <div key={book.id} style={{ background:"#fff",borderRadius:10,border:`1px solid ${isOpen?GREEN:"#eee"}`,padding:"10px 12px",marginBottom:8,transition:"border 0.2s" }}>
