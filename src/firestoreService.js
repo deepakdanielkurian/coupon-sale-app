@@ -123,6 +123,15 @@ export async function verifyDirectPayment(collectionId) {
   });
 }
 
+// ── Fix wrong ticketCount on existing books ──────────────────
+// Run once to correct any books saved with wrong series ticketCount
+export async function fixBookTicketCount(bookId, correctTicketCount) {
+  await updateDoc(doc(db, C.BOOKS, bookId), {
+    ticketCount: correctTicketCount,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 // ── Reset book status (fix wrongly-completed books) ──────────
 export async function resetBookStatus(bookId) {
   await updateDoc(doc(db, C.BOOKS, bookId), {

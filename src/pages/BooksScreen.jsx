@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useApp } from "../data/AppContext";
 import { LABELS, getBookStats, fmt } from "../data/store";
 import { BOOK_SERIES, ALL_BOOKS, TICKET_PRICE, TOTAL_TICKETS, getSeriesFromBook, getSeriesSummary } from "../data/bookConfig";
+import { fixBookTicketCount } from "../firestoreService";
 import { Badge, SectionLabel, InputField, PrimaryButton, OutlineButton, InfoChip, StatusBadge } from "../components/UI";
 
 const GREEN = "#1a6b3c";
@@ -494,7 +495,9 @@ function AssignBookForm({ onSave, onCancel }) {
     assigned.forEach(num=>{
       const bd = ALL_BOOKS.find(b=>b.bookNumber===num);
       if (!bd) return;
-      onSave({ bookNumber:num, series, memberId:isCommon?null:memberId, isCommon, ticketCount:seriesInfo.ticketsPerBook, ticketFrom:bd.ticketFrom, ticketTo:bd.ticketTo, issueDate, status:"not_started", notes });
+      // Use actual series from book number — never from form state (avoids wrong ticketCount)
+      const actualSeries = getSeriesFromBook(num);
+      onSave({ bookNumber:num, series:num[0], memberId:isCommon?null:memberId, isCommon, ticketCount:bd.ticketCount, ticketFrom:bd.ticketFrom, ticketTo:bd.ticketTo, issueDate, status:"not_started", notes });
     });
     setSaved(true);
   }
@@ -510,7 +513,7 @@ function AssignBookForm({ onSave, onCancel }) {
         <div key={num} style={{ background:"#fff",borderRadius:9,border:"1px solid #eee",padding:"8px 12px",marginBottom:6,width:"100%",display:"flex",alignItems:"center",gap:10 }}>
           <div style={{ width:28,height:28,borderRadius:7,background:isCommon?"#f3e5f5":s?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:isCommon?"#4a148c":s?.color,fontSize:12 }}>{num[0]}</div>
           <div><div style={{ fontSize:12,fontWeight:700 }}>Book {num}</div><div style={{ fontSize:10,color:"#888" }}>Tickets {bd?.ticketFrom}–{bd?.ticketTo}</div></div>
-          <div style={{ marginLeft:"auto",fontSize:12,fontWeight:700,color:GREEN }}>{fmt(seriesInfo?.ticketsPerBook*1000)}</div>
+          <div style={{ marginLeft:"auto",fontSize:12,fontWeight:700,color:GREEN }}>{fmt((s?.ticketsPerBook||bd?.ticketCount||0)*1000)}</div>
         </div>
       );})}
       <button onClick={onCancel} style={{ width:"100%",marginTop:16,background:`linear-gradient(135deg,${GREEN},#2e7d32)`,color:"#fff",border:"none",borderRadius:11,padding:13,fontSize:13,fontWeight:700,cursor:"pointer" }}>Done</button>
@@ -611,13 +614,17 @@ function AssignBookForm({ onSave, onCancel }) {
                 <div key={num} style={{ display:"flex",alignItems:"center",gap:8,background:isCommon?"#f3e5f5":"#e8f5ee",borderRadius:8,border:`1px solid ${isCommon?"#ce93d8":"#a5d6a7"}`,padding:"8px 10px",marginBottom:6 }}>
                   <div style={{ width:26,height:26,borderRadius:6,background:s?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:s?.color,fontSize:11,flexShrink:0 }}>{num[0]}</div>
                   <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>Book {num}</div><div style={{ fontSize:10,color:"#555" }}>Tickets {bd?.ticketFrom}–{bd?.ticketTo}</div></div>
-                  <div style={{ fontSize:11,fontWeight:700,color:GREEN }}>{fmt(seriesInfo.ticketsPerBook*1000)}</div>
+                  <div style={{ fontSize:11,fontWeight:700,color:GREEN }}>{fmt((ALL_BOOKS.find(b=>b.bookNumber===num)?.ticketCount||0)*1000)}</div>
                   <button onClick={()=>removeBook(num)} style={{ background:"#ffebee",border:"1px solid #fca5a5",color:"#dc2626",borderRadius:6,padding:"3px 7px",fontSize:10,cursor:"pointer" }}>✕</button>
                 </div>
               );})}
               <div style={{ background:"#1a1a1a",borderRadius:8,padding:"8px 12px",marginTop:4,display:"flex",justifyContent:"space-between" }}>
-                <div style={{ fontSize:11,color:"rgba(255,255,255,0.6)" }}>{assigned.length} book{assigned.length>1?"s":""} · {assigned.length*seriesInfo.ticketsPerBook} tickets</div>
-                <div style={{ fontSize:13,fontWeight:700,color:"#fff" }}>{fmt(assigned.length*seriesInfo.ticketsPerBook*1000)}</div>
+                <div style={{ fontSize:11,color:"rgba(255,255,255,0.6)" }}>
+                  {assigned.length} book{assigned.length>1?"s":""} · {assigned.reduce((s,n)=>{ const b=ALL_BOOKS.find(x=>x.bookNumber===n); return s+(b?.ticketCount||0); },0)} tickets
+                </div>
+                <div style={{ fontSize:13,fontWeight:700,color:"#fff" }}>
+                  {fmt(assigned.reduce((s,n)=>{ const b=ALL_BOOKS.find(x=>x.bookNumber===n); return s+(b?.ticketCount||0)*1000; },0))}
+                </div>
               </div>
             </div>
           )}
@@ -762,6 +769,18 @@ export default function BooksScreen({ triggerCollect }) {
         </div>
 
         <SectionLabel>Books ({filtered.length})</SectionLabel>
+        {/* Detect books with wrong ticketCount and offer fix */}
+        {filtered.some(book=>{
+          const expected=getSeriesFromBook(book.bookNumber)?.ticketsPerBook;
+          return expected && book.ticketCount!==expected;
+        })&&(
+          <div style={{ background:"#fff8e1",border:"1px solid #ffe082",borderRadius:9,padding:"9px 11px",marginBottom:10 }}>
+            <div style={{ display:"flex",alignItems:"flex-start",gap:7,marginBottom:8 }}>
+              <i className="ti ti-alert-triangle" style={{ color:"#e65100",fontSize:15,flexShrink:0 }}/>
+              <span style={{ fontSize:11,color:"#e65100",lineHeight:1.5 }}>Some books have wrong ticket count (saved incorrectly). Tap <strong>Fix</strong> to correct each one.</span>
+            </div>
+          </div>
+        )}
         {filtered.length===0&&<div style={{ textAlign:"center",color:"#aaa",fontSize:12,padding:"24px 0" }}>No books found</div>}
 
         {filtered.map(book=>{
@@ -785,6 +804,7 @@ export default function BooksScreen({ triggerCollect }) {
                   </div>
                 </div>
                 <StatusBadge status={book.status} stopped={book.stoppedSelling}/>
+              {(()=>{ const expected=getSeriesFromBook(book.bookNumber)?.ticketsPerBook; return expected&&book.ticketCount!==expected?(<button onClick={async(e)=>{e.stopPropagation();await fixBookTicketCount(book.id,expected);}} style={{ background:"#fff8e1",color:"#e65100",border:"1px solid #ffe082",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0 }}>Fix ({expected}t)</button>):null; })()}
               </div>
               <div style={{ display:"flex",alignItems:"center",gap:5,marginBottom:5 }}>
                 <div style={{ flex:1,height:5,background:"#f0f0f0",borderRadius:3,overflow:"hidden" }}><div style={{ width:`${pct}%`,height:"100%",background:barC,borderRadius:3 }}/></div>
