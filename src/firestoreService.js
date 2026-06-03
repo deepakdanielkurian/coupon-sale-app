@@ -204,7 +204,8 @@ export async function deleteBackup(id) {
 
 // ── Remittances ───────────────────────────────────────────────
 export async function addRemittance(data) {
-  const ref = await addDoc(collection(db, C.REMITTANCES), { ...data, createdAt: serverTimestamp() });
+  const now = new Date();
+  const ref = await addDoc(collection(db, C.REMITTANCES), { ...data, savedAt: now.toISOString(), createdAt: serverTimestamp() });
   return ref.id;
 }
 export function listenRemittances(cb) {

@@ -19,13 +19,28 @@ export default function RemittanceScreen({ onBack }) {
 
   // ── Last remittance cutoff ──────────────────────────────────
   // Option A: only show collections SINCE the last remittance
-  const lastRemittance = remittances.length > 0 ? remittances[0] : null;
-  const lastRemitDate  = lastRemittance?.date || null;
-  // Filter collections that came in AFTER the last remittance date
-  // If no remittance yet, show everything
+  // Use the remittance's Firebase createdAt timestamp for precise cutoff
+  const lastRemittance  = remittances.length > 0 ? remittances[0] : null;
+  const lastRemitDate   = lastRemittance?.date || null;
+  // Get precise cutoff time from savedAt or createdAt on the remittance
+  const lastRemitTime   = lastRemittance
+    ? (lastRemittance.savedAt
+        ? new Date(lastRemittance.savedAt).getTime()
+        : lastRemittance.createdAt?.toDate
+        ? lastRemittance.createdAt.toDate().getTime()
+        : new Date(lastRemittance.date + "T23:59:59").getTime())
+    : null;
+
+  // Filter collections saved AFTER the last remittance timestamp
   const freshCols = collections.filter(c => {
-    if (!lastRemitDate) return true;
-    return c.date >= lastRemitDate; // same day or after counts as fresh
+    if (!lastRemitTime) return true; // no remittance yet — show everything
+    // Get this collection's timestamp
+    const colTime = c.savedAt
+      ? new Date(c.savedAt).getTime()
+      : c.createdAt?.toDate
+      ? c.createdAt.toDate().getTime()
+      : new Date(c.date + "T00:00:00").getTime();
+    return colTime > lastRemitTime; // strictly AFTER the remittance
   });
 
   // ── Fresh cycle calculations (since last remittance) ────────
