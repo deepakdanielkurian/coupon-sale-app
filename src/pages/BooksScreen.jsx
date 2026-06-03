@@ -39,14 +39,23 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
   function validate() {
     const e = {};
     const usedNos = new Set();
-    entries.forEach((en,i) => {
-      const n = parseInt(en.ticketNo);
-      if (!en.ticketNo) { e[`t${i}`] = "Required"; return; }
-      if (isNaN(n)||n<book.ticketFrom||n>book.ticketTo) { e[`t${i}`] = `${book.ticketFrom}–${book.ticketTo}`; return; }
-      if (usedNos.has(n)) { e[`t${i}`] = "Duplicate"; return; }
-      usedNos.add(n);
-      if (!en.buyerName.trim()) e[`b${i}`] = "Required";
-    });
+    for (let i = 0; i < entries.length; i++) {
+      const en = entries[i];
+      const raw = String(en.ticketNo).trim();
+      const n   = parseInt(raw);
+      if (!raw) {
+        e[`t${i}`] = "Required";
+      } else if (isNaN(n) || n < book.ticketFrom || n > book.ticketTo) {
+        e[`t${i}`] = `Must be ${book.ticketFrom}–${book.ticketTo}`;
+      } else if (usedNos.has(n)) {
+        e[`t${i}`] = "Duplicate ticket number";
+      } else {
+        usedNos.add(n);
+      }
+      if (!en.buyerName.trim()) {
+        e[`b${i}`] = "Buyer name required";
+      }
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -143,7 +152,10 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
               <input
                 type="number"
                 value={entry.ticketNo}
-                onChange={e => updateEntry(i, "ticketNo", e.target.value)}
+                onChange={e => {
+                  updateEntry(i, "ticketNo", e.target.value);
+                  setErrors(prev => { const n={...prev}; delete n[`t${i}`]; return n; });
+                }}
                 placeholder={String(book.ticketFrom + i)}
                 style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${errors[`t${i}`]?"#dc2626":entry.ticketNo?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:14, fontWeight:700, color:PURPLE, outline:"none", boxSizing:"border-box" }}
               />
@@ -156,7 +168,10 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
               <input
                 type="text"
                 value={entry.buyerName}
-                onChange={e => updateEntry(i, "buyerName", e.target.value)}
+                onChange={e => {
+                  updateEntry(i, "buyerName", e.target.value);
+                  setErrors(prev => { const n={...prev}; delete n[`b${i}`]; return n; });
+                }}
                 placeholder="e.g. Rajan Kumar"
                 style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${errors[`b${i}`]?"#dc2626":entry.buyerName?PURPLE:"#e0e0e0"}`, borderRadius:8, padding:"8px 9px", fontSize:12, outline:"none", boxSizing:"border-box" }}
               />
