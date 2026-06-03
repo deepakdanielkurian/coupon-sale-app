@@ -6,6 +6,7 @@ import {
   addMember as fbAdd, updateMember as fbUpdate, deleteMember as fbDelete,
   addBook as fbAddBook, updateBook as fbUpdateBook,
   addCollection as fbAddCol, addLog as fbAddLog,
+  stopSelling as fbStopSelling,
   addRemittance as fbAddRemittance, listenRemittances,
   addAppUser as fbAddUser, updateAppUser as fbUpdateUser, deleteAppUser as fbDeleteUser,
   listenAppUsers, seedSuperAdmin,
@@ -107,13 +108,14 @@ export function AppProvider({ children }) {
   async function addCollection(c)    { try{ await fbAddCol(c);         await log("COLLECT_CASH",  `Rs.${c.amount} book ${c.bookId}`);    showToast("Cash collected!"); }     catch(e){ showToast("Failed","error"); } }
 
   // ── App users (super admin only) ──────────────────────────
+  async function stopSelling(bookId, returned, notes) { try{ await fbStopSelling(bookId, returned, notes); await log('STOP_SELLING',`Book ${bookId} stopped, ${returned} tickets returned`); showToast('Book closed — tickets returned'); } catch(e){ showToast('Failed','error'); } }
   async function addRemittance(r)  { try{ await fbAddRemittance(r); await log('ADD_REMITTANCE',`Rs.${r.amount} to ${r.toWhom}`); showToast('Remittance recorded'); } catch(e){ showToast('Failed','error'); } }
   async function addUser(u)          { try{ const id=await fbAddUser(u); await log("CREATE_USER",`Created user ${u.email} (${u.role})`); showToast(`${u.name} created`); }  catch(e){ showToast("Failed","error"); } }
   async function updateUser(id,u)    { try{ await fbUpdateUser(id,u); if(currentUser&&id===currentUser.id){ const updated={...currentUser,...u}; setCurrentUser(updated); localStorage.setItem(SESSION_KEY,JSON.stringify(updated)); } await log("EDIT_USER",`Updated user ${id}`); showToast("User updated"); } catch(e){ showToast("Failed","error"); } }
   async function deleteUser(id)      { try{ await fbDeleteUser(id);    await log("DELETE_USER",  `Deleted user ${id}`);                  showToast("User removed"); }        catch(e){ showToast("Failed","error"); } }
 
   return (
-    <AppContext.Provider value={{ data, loading, currentUser, appUsers, login, logout, can, addMember, updateMember, deleteMember, addBook, updateBook, addCollection, addUser, updateUser, deleteUser, addRemittance, showToast, toast }}>
+    <AppContext.Provider value={{ data, loading, currentUser, appUsers, login, logout, can, addMember, updateMember, deleteMember, addBook, updateBook, addCollection, addUser, updateUser, deleteUser, addRemittance, stopSelling, showToast, toast }}>
       {children}
       {toast && (
         <div style={{ position:"fixed", bottom:84, left:"50%", transform:"translateX(-50%)", background:toast.type==="success"?"#2e7d32":"#c62828", color:"#fff", padding:"11px 22px", borderRadius:11, fontSize:13, fontWeight:600, zIndex:9999, whiteSpace:"nowrap", boxShadow:"0 4px 20px rgba(0,0,0,0.18)", display:"flex", alignItems:"center", gap:8 }}>

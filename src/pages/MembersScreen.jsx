@@ -11,53 +11,59 @@ const MODE_COLORS = { cash:"#1a6b3c", upi:"#1565c0", bank:"#7b4400" };
 const MODE_BG     = { cash:"#e8f5ee", upi:"#e3f2fd", bank:"#fff3e0" };
 
 // ── Inline collect cash inside member profile ─────────────────
-// Key fix: receives fresh collections from parent on every render
-function InlineCollectCash({ book, collections, onSave, onCancel }) {
-  // Always compute live stats from the latest collections prop
-  const bookCols      = collections.filter(c => c.bookId === book.id);
-  const totalSold     = bookCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
-  const totalCollected= bookCols.reduce((s,c) => s+(c.amount||0), 0);
-  const totalValue    = book.ticketCount * 1000;
-  const remaining     = book.ticketCount - totalSold;
+function InlineCollectCash({ book, collections, onSave, onCancel, onStop }) {
+  const bookCols       = collections.filter(c => c.bookId === book.id);
+  const totalSold      = bookCols.reduce((s,c) => s+(c.ticketsSold||0), 0);
+  const totalCollected = bookCols.reduce((s,c) => s+(c.amount||0), 0);
+  const returned       = book.returnedTickets || 0;
+  const effective      = book.ticketCount - returned;
+  const remaining      = effective - totalSold;
 
-  const [date,     setDate]    = useState(new Date().toISOString().split("T")[0]);
-  const [tickets,  setTickets] = useState("");
-  const [payMode,  setPayMode] = useState("cash");
-  const [remarks,  setRemarks] = useState("");
-  const [markDone, setMarkDone]= useState(false);
+  const [date,    setDate]    = useState(new Date().toISOString().split("T")[0]);
+  const [tickets, setTickets] = useState("");
+  const [payMode, setPayMode] = useState("cash");
+  const [remarks, setRemarks] = useState("");
+  const [mode,    setMode]    = useState("collect"); // "collect" | "stop"
 
-  const t           = parseInt(tickets)||0;
-  const amount      = t * 1000;
-  const newSold     = totalSold + t;
-  const newCollected= totalCollected + amount;
-  const newBalance  = totalValue - newCollected;
-  const pct         = book.ticketCount > 0 ? Math.round((newSold/book.ticketCount)*100) : 0;
-  const willComplete= newSold >= book.ticketCount;
-  const valid       = t > 0 && t <= remaining;
+  // Stop-selling state
+  const [stopReturning, setStopReturning] = useState(String(remaining));
+  const [stopNotes,     setStopNotes]     = useState("");
 
-  function submit() {
+  const t            = parseInt(tickets)||0;
+  const amount       = t * 1000;
+  const newSold      = totalSold + t;
+  const newCollected = totalCollected + amount;
+  const afterEffective = effective; // effective doesn't change when collecting
+  const afterPending = Math.max(0, afterEffective*1000 - newCollected);
+  const pct          = effective > 0 ? Math.round((newSold/effective)*100) : 0;
+  const willComplete = newSold >= effective;
+  const valid        = t > 0 && t <= remaining;
+
+  const stopRet      = parseInt(stopReturning)||0;
+  const stopValid    = stopRet >= 0 && stopRet <= remaining;
+
+  function submitCollect() {
     if (!valid) return;
-    onSave({
-      id: `C-${Date.now()}`,
-      bookId: book.id,
-      memberId: book.memberId,
-      date, ticketsSold: t, amount, paymentMode: payMode,
-      remarks, bookCompleted: willComplete || markDone,
-    });
+    onSave({ id:`C-${Date.now()}`, bookId:book.id, memberId:book.memberId, date, ticketsSold:t, amount, paymentMode:payMode, remarks });
+  }
+
+  function submitStop() {
+    if (!stopValid) return;
+    onStop(stopRet, stopNotes);
   }
 
   return (
     <div style={{ background:"#f0f9f4", borderRadius:10, border:`2px solid ${GREEN}`, padding:"12px 14px", marginTop:8 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
         <div style={{ fontSize:12, fontWeight:700, color:GREEN }}>
-          <i className="ti ti-cash" style={{ marginRight:5 }}/>Collect Cash — Book {book.bookNumber}
+          <i className="ti ti-cash" style={{ marginRight:5 }}/>Book {book.bookNumber}
         </div>
         <button onClick={onCancel} style={{ background:"none", border:"none", cursor:"pointer", color:"#aaa", fontSize:18, lineHeight:1, padding:0 }}>✕</button>
       </div>
 
-      {/* Live book stats */}
+      {/* Stats */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:5, marginBottom:10 }}>
-        {[["Total",book.ticketCount],["Sold",totalSold],["Left",remaining]].map(([l,v])=>(
+        {[["Effective",effective],["Sold",totalSold],["Left",remaining]].map(([l,v])=>(
           <div key={l} style={{ background:"#fff", borderRadius:7, padding:"5px 6px", textAlign:"center" }}>
             <div style={{ fontSize:9, color:"#aaa" }}>{l}</div>
             <div style={{ fontSize:14, fontWeight:700, color:l==="Left"&&v===0?GREEN:l==="Left"?"#e65100":"#1a1a1a" }}>{v}</div>
@@ -68,91 +74,132 @@ function InlineCollectCash({ book, collections, onSave, onCancel }) {
       {remaining === 0 ? (
         <div style={{ background:"#e8f5ee", borderRadius:8, padding:"10px 12px", textAlign:"center", color:GREEN, fontWeight:700, fontSize:12 }}>
           <i className="ti ti-circle-check" style={{ fontSize:18, display:"block", marginBottom:4 }}/>
-          Book fully sold — no tickets remaining
+          All {effective} tickets sold — book complete!
         </div>
       ) : (
         <>
-          <div style={{ marginBottom:8 }}>
-            <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>Date *</div>
-            <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-              style={{ width:"100%", background:"#fff", border:`1.5px solid ${GREEN}`, borderRadius:8, padding:"8px 10px", fontSize:12, outline:"none", boxSizing:"border-box" }}/>
+          {/* Mode toggle */}
+          <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+            <div onClick={()=>setMode("collect")}
+              style={{ flex:1, border:`2px solid ${mode==="collect"?GREEN:"#e0e0e0"}`, borderRadius:9, padding:"8px 6px", background:mode==="collect"?"#e8f5ee":"#fff", textAlign:"center", cursor:"pointer" }}>
+              <i className="ti ti-cash" style={{ fontSize:16, color:mode==="collect"?GREEN:"#bbb", display:"block", marginBottom:3 }}/>
+              <div style={{ fontSize:11, fontWeight:700, color:mode==="collect"?GREEN:"#888" }}>Collect cash</div>
+              <div style={{ fontSize:9, color:"#aaa", marginTop:1 }}>Record payment</div>
+            </div>
+            <div onClick={()=>setMode("stop")}
+              style={{ flex:1, border:`2px solid ${mode==="stop"?"#e65100":"#e0e0e0"}`, borderRadius:9, padding:"8px 6px", background:mode==="stop"?"#fff8e1":"#fff", textAlign:"center", cursor:"pointer" }}>
+              <i className="ti ti-player-stop" style={{ fontSize:16, color:mode==="stop"?"#e65100":"#bbb", display:"block", marginBottom:3 }}/>
+              <div style={{ fontSize:11, fontWeight:700, color:mode==="stop"?"#e65100":"#888" }}>Stop selling</div>
+              <div style={{ fontSize:9, color:"#aaa", marginTop:1 }}>Return remaining</div>
+            </div>
           </div>
 
-          <div style={{ marginBottom:8 }}>
-            <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>Tickets sold this time (max {remaining}) *</div>
-            <input type="number" min="1" max={remaining} value={tickets} onChange={e=>setTickets(e.target.value)}
-              placeholder={`1 – ${remaining}`}
-              style={{ width:"100%", background:"#fff", border:`1.5px solid ${t>remaining?"#dc2626":t>0?GREEN:"#e0e0e0"}`, borderRadius:8, padding:"8px 10px", fontSize:13, fontWeight:700, outline:"none", boxSizing:"border-box" }}/>
-            {t > remaining && <div style={{ fontSize:10, color:"#dc2626", marginTop:3 }}>Cannot exceed {remaining} remaining tickets</div>}
-          </div>
-
-          {/* Amount + After preview */}
-          {t > 0 && t <= remaining && (
+          {/* ── COLLECT CASH MODE ── */}
+          {mode==="collect" && (
             <>
-              <div style={{ background:"#e8f5ee", borderRadius:8, padding:"9px 11px", marginBottom:8, border:"1px solid #a5d6a7" }}>
-                <div style={{ fontSize:10, color:"#2e7d32", marginBottom:2 }}>Amount (auto-calculated)</div>
-                <div style={{ fontSize:24, fontWeight:700, color:GREEN }}>{fmt(amount)}</div>
-                <div style={{ fontSize:10, color:"#555" }}>{t} tickets × Rs.1,000</div>
+              <div style={{ marginBottom:8 }}>
+                <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>Date *</div>
+                <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+                  style={{ width:"100%", background:"#fff", border:`1.5px solid ${GREEN}`, borderRadius:8, padding:"8px 10px", fontSize:12, outline:"none", boxSizing:"border-box" }}/>
               </div>
-
-              <div style={{ background:"#fff", borderRadius:8, border:"1px solid #eee", padding:"9px 11px", marginBottom:8 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>After this entry</div>
-                {[
-                  ["Tickets sold",  `${newSold} / ${book.ticketCount}`],
-                  ["Remaining",     `${remaining - t} left`,         remaining-t===0?GREEN:"#e65100"],
-                  ["Collected",     fmt(newCollected),                GREEN],
-                  ["Balance",       fmt(Math.max(0, newBalance)),     newBalance<=0?GREEN:"#e65100"],
-                  ["Completion",    `${pct}%`],
-                ].map(([l,v,c], i, arr) => (
-                  <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"3px 0", borderBottom:i<arr.length-1?"0.5px solid #f5f5f5":"none", fontSize:11 }}>
-                    <span style={{ color:"#777" }}>{l}</span>
-                    <span style={{ fontWeight:700, color:c||"#1a1a1a" }}>{v}</span>
+              <div style={{ marginBottom:8 }}>
+                <div style={{ fontSize:10, fontWeight:600, color:"#555", marginBottom:4 }}>Tickets sold (max {remaining}) *</div>
+                <input type="number" min="1" max={remaining} value={tickets} onChange={e=>setTickets(e.target.value)}
+                  placeholder={`1 – ${remaining}`}
+                  style={{ width:"100%", background:"#fff", border:`1.5px solid ${t>remaining?"#dc2626":t>0?GREEN:"#e0e0e0"}`, borderRadius:8, padding:"8px 10px", fontSize:13, fontWeight:700, outline:"none", boxSizing:"border-box" }}/>
+                {t>remaining&&<div style={{ fontSize:10, color:"#dc2626", marginTop:3 }}>Max {remaining} remaining</div>}
+              </div>
+              {t>0 && t<=remaining && (
+                <>
+                  <div style={{ background:"#e8f5ee", borderRadius:8, padding:"9px 11px", marginBottom:8, border:"1px solid #a5d6a7" }}>
+                    <div style={{ fontSize:10, color:"#2e7d32", marginBottom:2 }}>Amount (auto-calculated)</div>
+                    <div style={{ fontSize:24, fontWeight:700, color:GREEN }}>{fmt(amount)}</div>
+                    <div style={{ fontSize:10, color:"#555" }}>{t} × Rs.1,000</div>
+                  </div>
+                  <div style={{ background:"#fff", borderRadius:8, border:"1px solid #eee", padding:"9px 11px", marginBottom:8 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>After this entry</div>
+                    {[
+                      ["Tickets sold",  `${newSold} / ${effective}`],
+                      ["Remaining",     `${remaining-t} left`,    remaining-t===0?GREEN:"#e65100"],
+                      ["Collected",     fmt(newCollected),         GREEN],
+                      ["Balance",       fmt(afterPending),         afterPending<=0?GREEN:"#e65100"],
+                      ["Completion",    `${pct}%`],
+                    ].map(([l,v,c],i,arr)=>(
+                      <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"3px 0", borderBottom:i<arr.length-1?"0.5px solid #f5f5f5":"none", fontSize:11 }}>
+                        <span style={{ color:"#777" }}>{l}</span>
+                        <span style={{ fontWeight:700, color:c||"#1a1a1a" }}>{v}</span>
+                      </div>
+                    ))}
+                    <div style={{ height:5, background:"#f0f0f0", borderRadius:3, overflow:"hidden", marginTop:6 }}>
+                      <div style={{ width:`${pct}%`, height:"100%", background:pct===100?GREEN:"#4caf50", borderRadius:3 }}/>
+                    </div>
+                    {willComplete&&<div style={{ marginTop:6, background:"#e8f5ee", borderRadius:6, padding:"5px 8px", fontSize:10, color:GREEN, fontWeight:700 }}><i className="ti ti-trophy" style={{ marginRight:4 }}/>All tickets sold! Book complete 🎉</div>}
+                  </div>
+                </>
+              )}
+              <div style={{ display:"flex", gap:5, marginBottom:8 }}>
+                {["cash","upi","bank"].map(m=>(
+                  <div key={m} onClick={()=>setPayMode(m)}
+                    style={{ flex:1, border:`${payMode===m?"2px":"1px"} solid ${payMode===m?GREEN:"#e0e0e0"}`, borderRadius:7, padding:"7px 4px", background:payMode===m?"#e8f5ee":"#fff", textAlign:"center", fontSize:10, color:payMode===m?GREEN:"#888", fontWeight:payMode===m?700:400, cursor:"pointer" }}>
+                    <i className={`ti ${MODE_ICONS[m]}`} style={{ fontSize:14, display:"block", marginBottom:2 }}/>{m.toUpperCase()}
                   </div>
                 ))}
-                <div style={{ height:5, background:"#f0f0f0", borderRadius:3, overflow:"hidden", marginTop:6 }}>
-                  <div style={{ width:`${pct}%`, height:"100%", background:pct===100?GREEN:"#4caf50", borderRadius:3 }}/>
-                </div>
-                {willComplete && (
-                  <div style={{ marginTop:6, background:"#e8f5ee", borderRadius:6, padding:"5px 8px", fontSize:10, color:GREEN, fontWeight:700 }}>
-                    <i className="ti ti-trophy" style={{ marginRight:4 }}/>Completes Book {book.bookNumber}! 🎉
-                  </div>
-                )}
               </div>
+              <input value={remarks} onChange={e=>setRemarks(e.target.value)} placeholder="Remarks (optional)"
+                style={{ width:"100%", background:"#fff", border:"1px solid #e0e0e0", borderRadius:8, padding:"8px 10px", fontSize:12, outline:"none", boxSizing:"border-box", marginBottom:8 }}/>
+              <button onClick={submitCollect} disabled={!valid}
+                style={{ width:"100%", background:valid?`linear-gradient(135deg,${GREEN},#2e7d32)`:"#e0e0e0", color:"#fff", border:"none", borderRadius:9, padding:"11px", fontSize:12, fontWeight:700, cursor:valid?"pointer":"not-allowed" }}>
+                <i className="ti ti-check" style={{ marginRight:5 }}/>Save collection entry
+              </button>
             </>
           )}
 
-          {/* Payment mode */}
-          <div style={{ display:"flex", gap:5, marginBottom:8 }}>
-            {["cash","upi","bank"].map(m=>(
-              <div key={m} onClick={()=>setPayMode(m)}
-                style={{ flex:1, border:`${payMode===m?"2px":"1px"} solid ${payMode===m?GREEN:"#e0e0e0"}`, borderRadius:7, padding:"7px 4px", background:payMode===m?"#e8f5ee":"#fff", textAlign:"center", fontSize:10, color:payMode===m?GREEN:"#888", fontWeight:payMode===m?700:400, cursor:"pointer" }}>
-                <i className={`ti ${MODE_ICONS[m]}`} style={{ fontSize:14, display:"block", marginBottom:2 }}/>
-                {m.toUpperCase()}
+          {/* ── STOP SELLING MODE ── */}
+          {mode==="stop" && (
+            <div style={{ background:"#fff8e1", borderRadius:10, border:"1.5px solid #ffe082", padding:"12px" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:8, marginBottom:12 }}>
+                <i className="ti ti-player-stop" style={{ color:"#e65100", fontSize:18, flexShrink:0, marginTop:1 }}/>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#e65100" }}>Seller is stopping — return tickets</div>
+                  <div style={{ fontSize:10, color:"#bf360c", marginTop:3, lineHeight:1.5 }}>
+                    The seller has {remaining} unsold tickets. How many are they returning?
+                    Returned tickets won't count toward pending balance.
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-
-          <input value={remarks} onChange={e=>setRemarks(e.target.value)} placeholder="Remarks (optional)"
-            style={{ width:"100%", background:"#fff", border:"1px solid #e0e0e0", borderRadius:8, padding:"8px 10px", fontSize:12, outline:"none", boxSizing:"border-box", marginBottom:8 }}/>
-
-          {/* Mark complete */}
-          {!willComplete && (
-            <div onClick={()=>setMarkDone(b=>!b)}
-              style={{ display:"flex", alignItems:"center", gap:8, background:markDone?"#e8f5ee":"#fff", borderRadius:8, border:`1px solid ${markDone?GREEN:"#e0e0e0"}`, padding:"8px 10px", marginBottom:10, cursor:"pointer" }}>
-              <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${markDone?GREEN:"#ccc"}`, background:markDone?GREEN:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                {markDone && <i className="ti ti-check" style={{ color:"#fff", fontSize:11 }}/>}
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:4 }}>Tickets being returned *</div>
+                <input type="number" min="0" max={remaining} value={stopReturning} onChange={e=>setStopReturning(e.target.value)}
+                  style={{ width:"100%", background:"#fff", border:`1.5px solid ${stopValid?"#e65100":"#dc2626"}`, borderRadius:8, padding:"9px 10px", fontSize:16, fontWeight:700, outline:"none", boxSizing:"border-box", color:"#e65100", textAlign:"center" }}/>
+                <div style={{ fontSize:10, color:"#888", marginTop:3 }}>Max {remaining} (all remaining unsold tickets)</div>
               </div>
-              <div>
-                <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a" }}>Mark book as complete</div>
-                <div style={{ fontSize:10, color:"#aaa" }}>Tick if remaining tickets returned or book closed</div>
-              </div>
+              {/* Summary after stop */}
+              {stopValid && (
+                <div style={{ background:"#fff", borderRadius:8, padding:"9px 11px", marginBottom:10, border:"1px solid #ffe082" }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>Summary after stopping</div>
+                  {[
+                    ["Tickets sold by seller",  totalSold],
+                    ["Tickets returned",         stopRet,   "#e65100"],
+                    ["Effective tickets",         effective - stopRet + (book.returnedTickets||0), "#1a1a1a"],
+                    ["Amount already collected", fmt(totalCollected), GREEN],
+                    ["Balance now due",          fmt(Math.max(0, (effective-stopRet)*1000 - totalCollected)), (effective-stopRet)*1000-totalCollected<=0?GREEN:"#e65100"],
+                  ].map(([l,v,c],i,arr)=>(
+                    <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"3px 0", borderBottom:i<arr.length-1?"0.5px solid #f5f5f5":"none", fontSize:11 }}>
+                      <span style={{ color:"#777" }}>{l}</span>
+                      <span style={{ fontWeight:700, color:c||"#1a1a1a" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input value={stopNotes} onChange={e=>setStopNotes(e.target.value)} placeholder="Reason (optional) e.g. travelling, unwell..."
+                style={{ width:"100%", background:"#fff", border:"1px solid #e0e0e0", borderRadius:8, padding:"8px 10px", fontSize:12, outline:"none", boxSizing:"border-box", marginBottom:10 }}/>
+              <button onClick={submitStop} disabled={!stopValid}
+                style={{ width:"100%", background:stopValid?"#e65100":"#ccc", color:"#fff", border:"none", borderRadius:9, padding:"11px", fontSize:12, fontWeight:700, cursor:stopValid?"pointer":"not-allowed", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <i className="ti ti-player-stop" style={{ fontSize:14 }}/>
+                Confirm — return {stopRet} ticket{stopRet!==1?"s":""} & close book
+              </button>
             </div>
           )}
-
-          <button onClick={submit} disabled={!valid}
-            style={{ width:"100%", background:valid?`linear-gradient(135deg,${GREEN},#2e7d32)`:"#e0e0e0", color:"#fff", border:"none", borderRadius:9, padding:"11px", fontSize:12, fontWeight:700, cursor:valid?"pointer":"not-allowed" }}>
-            <i className="ti ti-check" style={{ marginRight:5 }}/>Save collection entry
-          </button>
         </>
       )}
     </div>
@@ -216,7 +263,7 @@ function MemberForm({ onSave, onCancel, existing }) {
 
 // ── Member detail ─────────────────────────────────────────────
 function MemberDetail({ member, onEdit }) {
-  const { data, addCollection } = useApp();
+  const { data, addCollection, stopSelling } = useApp();
   const { books, collections } = data;
 
   // Always use live collections from context
@@ -337,12 +384,13 @@ function MemberDetail({ member, onEdit }) {
                 const bookCols   = collections.filter(c=>c.bookId===book.id);
                 const totalSold  = bookCols.reduce((s,c)=>s+(c.ticketsSold||0),0);
                 const totalColl  = bookCols.reduce((s,c)=>s+(c.amount||0),0);
-                const pending    = book.ticketCount*1000 - totalColl;
-                const pct        = book.ticketCount>0?Math.round((totalSold/book.ticketCount)*100):0;
+                const returned   = book.returnedTickets||0;
+                const effective  = book.ticketCount - returned;
+                const pending    = Math.max(0, effective*1000 - totalColl);
+                const pct        = effective>0?Math.round((totalSold/effective)*100):0;
                 const sr         = getSeriesFromBook(book.bookNumber);
                 const isOpen     = collectingBook===book.id;
-                // Live status: complete if fully sold or marked complete
-                const isComplete = book.status==="complete" || totalSold>=book.ticketCount;
+                const isComplete = book.status==="complete" || totalSold>=effective;
 
                 return(
                   <div key={book.id} style={{ background:"#fff",borderRadius:10,border:`1px solid ${isOpen?GREEN:"#eee"}`,padding:"10px 12px",marginBottom:8,transition:"border 0.2s" }}>
@@ -353,19 +401,20 @@ function MemberDetail({ member, onEdit }) {
                         <div style={{ fontSize:10,color:"#aaa" }}>Tickets {book.ticketFrom}–{book.ticketTo} · Issued {book.issueDate||"—"}</div>
                       </div>
                       <span style={{ fontSize:9,padding:"2px 7px",borderRadius:7,fontWeight:700,background:isComplete?"#e8f5ee":totalSold>0?"#fff3e0":"#ffebee",color:isComplete?GREEN:totalSold>0?"#e65100":"#c62828" }}>
-                        {isComplete?"Complete":totalSold>0?"Ongoing":"Not started"}
+                        {book.stoppedSelling?"Stopped":isComplete?"Complete":totalSold>0?"Ongoing":"Not started"}
                       </span>
                     </div>
                     <div style={{ display:"flex",alignItems:"center",gap:5,marginBottom:5 }}>
                       <div style={{ flex:1,height:5,background:"#f0f0f0",borderRadius:3,overflow:"hidden" }}>
                         <div style={{ width:`${pct}%`,height:"100%",background:isComplete?GREEN:"#4caf50",borderRadius:3,transition:"width 0.4s" }}/>
                       </div>
-                      <span style={{ fontSize:10,color:"#aaa" }}>{totalSold}/{book.ticketCount}</span>
+                      <span style={{ fontSize:10,color:"#aaa" }}>{totalSold}/{effective}{returned>0?` (+${returned} ret)`:""}</span>
                     </div>
-                    <div style={{ display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:isComplete?0:8 }}>
+                    <div style={{ display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:isComplete&&returned===0?0:4 }}>
                       <span style={{ color:GREEN,fontWeight:700 }}>Collected: {fmt(totalColl)}</span>
-                      <span style={{ color:pending>0?"#e65100":"#888" }}>Pending: {fmt(Math.max(0,pending))}</span>
+                      <span style={{ color:pending>0?"#e65100":GREEN,fontWeight:pending===0?700:400 }}>Pending: {fmt(pending)}</span>
                     </div>
+                    {returned>0&&<div style={{ fontSize:10,color:"#e65100",marginBottom:isComplete?0:8 }}><i className="ti ti-corner-down-left" style={{ fontSize:11,marginRight:3 }}/>{returned} ticket{returned!==1?"s":""} returned — {book.stopNotes||"stopped selling"}</div>}
 
                     {/* Collect Cash button — shown even if ongoing, hidden only if complete */}
                     {!isComplete && (
@@ -375,6 +424,7 @@ function MemberDetail({ member, onEdit }) {
                           book={book}
                           collections={collections}
                           onSave={col=>{ addCollection(col); setCollectingBook(null); }}
+                          onStop={(returned, notes)=>{ stopSelling(book.id, returned, notes); setCollectingBook(null); }}
                           onCancel={()=>setCollectingBook(null)}
                         />
                       ) : (
