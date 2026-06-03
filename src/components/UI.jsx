@@ -6,8 +6,16 @@ export function Badge({ type="committee_member" }) {
   return <span style={{display:"inline-block",fontSize:9,padding:"2px 7px",borderRadius:8,fontWeight:600,background:cfg.bg,color:cfg.color}}>{cfg.label}</span>;
 }
 
-export function StatusBadge({ status }) {
-  const c = {complete:{bg:"#e8f5ee",color:"#1a6b3c",label:"Complete"},ongoing:{bg:"#fff3e0",color:"#e65100",label:"Ongoing"},not_started:{bg:"#ffebee",color:"#c62828",label:"Not started"}}[status]||{bg:"#f5f5f5",color:"#777",label:status};
+export function StatusBadge({ status, stopped }) {
+  const map = {
+    complete:    { bg:"#e8f5ee", color:"#1a6b3c", label:"Complete" },
+    ongoing:     { bg:"#fff3e0", color:"#e65100", label:"Ongoing" },
+    not_started: { bg:"#ffebee", color:"#c62828", label:"Not started" },
+  };
+  // Stopped selling = complete but with returned tickets
+  const c = stopped
+    ? { bg:"#fff3e0", color:"#e65100", label:"Stopped" }
+    : map[status] || { bg:"#f5f5f5", color:"#777", label:status };
   return <span style={{display:"inline-block",fontSize:9,padding:"2px 7px",borderRadius:8,fontWeight:600,background:c.bg,color:c.color}}>{c.label}</span>;
 }
 

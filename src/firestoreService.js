@@ -91,18 +91,32 @@ export async function updateBook(id, data) {
 // ── Collections ────────────────────────────────────────────────
 export async function addCollection(data) {
   const ref = await addDoc(collection(db, C.COLLECTIONS), { ...data, createdAt: serverTimestamp() });
-  // Auto-update book status
+  // Auto-update book status based on tickets sold vs effective tickets
   const bookSnap = await getDoc(doc(db, C.BOOKS, data.bookId));
   if (bookSnap.exists()) {
-    const book    = bookSnap.data();
-    const allCols = await getDocs(collection(db, C.COLLECTIONS));
+    const book      = bookSnap.data();
+    const returned  = book.returnedTickets || 0;
+    const effective = book.ticketCount - returned;
+    const allCols   = await getDocs(collection(db, C.COLLECTIONS));
     const totalSold = allCols.docs
       .filter(d => d.data().bookId === data.bookId)
       .reduce((s, d) => s + (d.data().ticketsSold || 0), 0) + data.ticketsSold;
-    const status = (totalSold >= book.ticketCount || data.bookCompleted) ? "complete" : "ongoing";
+    // Auto-complete when all effective tickets are sold
+    const status = totalSold >= effective ? "complete" : "ongoing";
     await updateDoc(doc(db, C.BOOKS, data.bookId), { status, updatedAt: serverTimestamp() });
   }
   return ref.id;
+}
+
+// ── Stop selling — record returned tickets and close book ──────
+export async function stopSelling(bookId, returnedTickets, notes) {
+  await updateDoc(doc(db, C.BOOKS, bookId), {
+    status: "complete",
+    returnedTickets,
+    stoppedSelling: true,
+    stopNotes: notes || "",
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // ── Activity logs ──────────────────────────────────────────────

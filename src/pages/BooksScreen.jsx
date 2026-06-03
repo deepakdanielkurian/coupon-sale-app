@@ -284,30 +284,34 @@ function SellCommonTicketForm({ book, onSave, onCancel }) {
 }
 
 // ── Regular Collect Cash Form ─────────────────────────────────
-function CollectCashForm({ book, onSave, onCancel }) {
+function CollectCashForm({ book, onSave, onStop, onCancel }) {
   const { data } = useApp();
-  const stats  = getBookStats(book, data.collections);
-  const member = data.members.find(m => m.id === book.memberId);
-  const series = getSeriesFromBook(book.bookNumber);
+  const stats    = getBookStats(book, data.collections);
+  const member   = data.members.find(m => m.id === book.memberId);
+  const series   = getSeriesFromBook(book.bookNumber);
+  const effective = stats.effective;
+  const remaining = effective - stats.totalSold;
 
   const [date,        setDate]    = useState(new Date().toISOString().split("T")[0]);
   const [ticketsSold, setSold]    = useState("");
   const [payMode,     setPayMode] = useState("cash");
   const [remarks,     setRemarks] = useState("");
-  const [markDone,    setMarkDone]= useState(false);
+  const [showStop,    setShowStop]= useState(false);
+  const [stopRet,     setStopRet] = useState(String(remaining));
+  const [stopNotes,   setStopNotes]= useState("");
 
   const tickets      = parseInt(ticketsSold)||0;
   const amount       = tickets * TICKET_PRICE;
-  const remaining    = book.ticketCount - stats.totalSold;
   const newSold      = stats.totalSold + tickets;
   const newTotal     = stats.totalCollected + amount;
-  const newPending   = book.ticketCount * TICKET_PRICE - newTotal;
-  const pct          = Math.round((newSold/book.ticketCount)*100);
-  const willComplete = newSold >= book.ticketCount;
+  const newPending   = Math.max(0, effective * TICKET_PRICE - newTotal);
+  const pct          = effective > 0 ? Math.round((newSold/effective)*100) : 0;
+  const willComplete = newSold >= effective;
+  const stopRetNum   = parseInt(stopRet)||0;
 
   function submit() {
     if (!tickets||tickets<=0||tickets>remaining) return;
-    onSave({ id:`C-${Date.now()}`, bookId:book.id, memberId:book.memberId, date, ticketsSold:tickets, amount, paymentMode:payMode, remarks, bookCompleted:willComplete||markDone });
+    onSave({ id:`C-${Date.now()}`, bookId:book.id, memberId:book.memberId, date, ticketsSold:tickets, amount, paymentMode:payMode, remarks });
   }
 
   return (
@@ -321,7 +325,7 @@ function CollectCashForm({ book, onSave, onCancel }) {
           {series&&<span style={{ fontSize:10,fontWeight:700,color:series.color,background:"#fff",padding:"3px 8px",borderRadius:7 }}>{series.label}</span>}
         </div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6 }}>
-          {[["Total",book.ticketCount],["Sold",stats.totalSold],["Left",remaining]].map(([l,v])=>(
+          {[["Effective",effective],["Sold",stats.totalSold],["Left",remaining]].map(([l,v])=>(
             <div key={l} style={{ background:"rgba(255,255,255,0.7)",borderRadius:7,padding:"6px 8px",textAlign:"center" }}>
               <div style={{ fontSize:9,color:"#888" }}>{l}</div>
               <div style={{ fontSize:16,fontWeight:700,color:"#1a1a1a" }}>{v}</div>
@@ -330,11 +334,9 @@ function CollectCashForm({ book, onSave, onCancel }) {
         </div>
         <div style={{ display:"flex",justifyContent:"space-between",marginTop:8,fontSize:11 }}>
           <span style={{ color:GREEN,fontWeight:700 }}>Collected: {fmt(stats.totalCollected)}</span>
-          <span style={{ color:"#e65100" }}>Pending: {fmt(stats.pending)}</span>
+          <span style={{ color:stats.pending>0?"#e65100":GREEN }}>Pending: {fmt(stats.pending)}</span>
         </div>
       </div>
-
-      <InfoChip>Amount = tickets × Rs.1,000. Max {remaining} remaining.</InfoChip>
 
       <SectionLabel>Collection entry</SectionLabel>
       <div style={{ marginBottom:10 }}>
@@ -354,7 +356,7 @@ function CollectCashForm({ book, onSave, onCancel }) {
       {tickets>0&&tickets<=remaining&&(
         <div style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:10 }}>
           <div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a",marginBottom:8 }}>After this entry</div>
-          {[["Tickets sold",`${newSold}/${book.ticketCount}`],["Remaining",`${book.ticketCount-newSold} left`,book.ticketCount-newSold===0?GREEN:"#e65100"],["Collected",fmt(newTotal),GREEN],["Balance",fmt(Math.max(0,newPending)),newPending<=0?GREEN:"#e65100"],["Completion",`${pct}%`]].map(([l,v,c],i,arr)=>(
+          {[["Tickets sold",`${newSold}/${effective}`],["Remaining",`${remaining-tickets} left`,remaining-tickets===0?GREEN:"#e65100"],["Collected",fmt(newTotal),GREEN],["Balance",fmt(newPending),newPending<=0?GREEN:"#e65100"],["Completion",`${pct}%`]].map(([l,v,c],i,arr)=>(
             <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:i<arr.length-1?"1px solid #f5f5f5":"none",fontSize:11 }}>
               <span style={{ color:"#777" }}>{l}</span><span style={{ fontWeight:700,color:c||"#1a1a1a" }}>{v}</span>
             </div>
@@ -363,12 +365,38 @@ function CollectCashForm({ book, onSave, onCancel }) {
         </div>
       )}
 
-      {!willComplete&&remaining>0&&(
-        <div onClick={()=>setMarkDone(b=>!b)} style={{ display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:9,border:"1px solid #eee",padding:"10px 12px",marginBottom:10,cursor:"pointer" }}>
-          <div style={{ width:18,height:18,borderRadius:5,border:`2px solid ${markDone?GREEN:"#ccc"}`,background:markDone?GREEN:"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
-            {markDone&&<i className="ti ti-check" style={{ color:"#fff",fontSize:11 }}/>}
+      {/* Stop selling button */}
+      {!willComplete&&remaining>0&&!showStop&&(
+        <button onClick={()=>setShowStop(true)}
+          style={{ width:"100%",background:"#fff",color:"#e65100",border:"1.5px solid #e65100",borderRadius:9,padding:"9px",fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
+          <i className="ti ti-player-stop" style={{ fontSize:14 }}/>Seller is stopping — return tickets
+        </button>
+      )}
+      {showStop&&(
+        <div style={{ background:"#fff8e1",borderRadius:10,border:"1.5px solid #ffe082",padding:"12px",marginBottom:10 }}>
+          <div style={{ fontSize:12,fontWeight:700,color:"#e65100",marginBottom:6 }}><i className="ti ti-player-stop" style={{ marginRight:5 }}/>Return unsold tickets</div>
+          <div style={{ fontSize:10,color:"#bf360c",marginBottom:10,lineHeight:1.5 }}>Seller has {remaining} unsold tickets. Enter how many they are returning. Returned tickets won't count as pending.</div>
+          <div style={{ marginBottom:8 }}>
+            <div style={{ fontSize:10,fontWeight:600,color:"#555",marginBottom:4 }}>Tickets returning (max {remaining})</div>
+            <input type="number" min="0" max={remaining} value={stopRet} onChange={e=>setStopRet(e.target.value)}
+              style={{ width:"100%",background:"#fff",border:"1.5px solid #e65100",borderRadius:8,padding:"9px 10px",fontSize:16,fontWeight:700,color:"#e65100",textAlign:"center",outline:"none",boxSizing:"border-box" }}/>
           </div>
-          <div><div style={{ fontSize:12,fontWeight:600,color:"#1a1a1a" }}>Mark book as complete</div><div style={{ fontSize:10,color:"#aaa" }}>Tick if remaining tickets returned</div></div>
+          {stopRetNum>=0&&stopRetNum<=remaining&&(
+            <div style={{ background:"#fff",borderRadius:8,padding:"8px 10px",marginBottom:8,border:"1px solid #ffe082",fontSize:11 }}>
+              <div style={{ display:"flex",justifyContent:"space-between",marginBottom:3 }}><span style={{ color:"#777" }}>Sold</span><span style={{ fontWeight:700 }}>{stats.totalSold} tickets</span></div>
+              <div style={{ display:"flex",justifyContent:"space-between",marginBottom:3 }}><span style={{ color:"#777" }}>Returning</span><span style={{ fontWeight:700,color:"#e65100" }}>{stopRetNum} tickets</span></div>
+              <div style={{ display:"flex",justifyContent:"space-between",borderTop:"0.5px solid #f5f5f5",paddingTop:4 }}><span style={{ color:"#777" }}>Balance due</span><span style={{ fontWeight:700,color:(effective-stopRetNum)*1000-stats.totalCollected<=0?GREEN:"#e65100" }}>{fmt(Math.max(0,(effective-stopRetNum)*1000-stats.totalCollected))}</span></div>
+            </div>
+          )}
+          <input value={stopNotes} onChange={e=>setStopNotes(e.target.value)} placeholder="Reason (optional)"
+            style={{ width:"100%",background:"#fff",border:"1px solid #e0e0e0",borderRadius:8,padding:"8px 10px",fontSize:12,outline:"none",boxSizing:"border-box",marginBottom:8 }}/>
+          <div style={{ display:"flex",gap:6 }}>
+            <button onClick={()=>setShowStop(false)} style={{ flex:1,background:"#fff",color:"#888",border:"1px solid #e0e0e0",borderRadius:8,padding:"9px",fontSize:11,fontWeight:600,cursor:"pointer" }}>Cancel</button>
+            <button onClick={()=>{ if(stopRetNum>=0&&stopRetNum<=remaining) onStop(stopRetNum,stopNotes); }}
+              style={{ flex:2,background:"#e65100",color:"#fff",border:"none",borderRadius:8,padding:"9px",fontSize:11,fontWeight:700,cursor:"pointer" }}>
+              <i className="ti ti-player-stop"/> Return {stopRetNum} & close book
+            </button>
+          </div>
         </div>
       )}
 
@@ -585,7 +613,7 @@ function AssignBookForm({ onSave, onCancel }) {
 
 // ── Main Books Screen ─────────────────────────────────────────
 export default function BooksScreen({ triggerCollect }) {
-  const { data, addBook, addCollection } = useApp();
+  const { data, addBook, addCollection, stopSelling } = useApp();
   const [view,   setView]  = useState("list");
   const [selBook,setBook]  = useState(null);
   const [fSeries,setFS]    = useState("all");
@@ -721,16 +749,17 @@ export default function BooksScreen({ triggerCollect }) {
                     {book.isCommon&&<span style={{ marginLeft:5,background:"#4a148c",color:"#fff",fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4 }}>COMMON</span>}
                   </div>
                 </div>
-                <StatusBadge status={book.status}/>
+                <StatusBadge status={book.status} stopped={book.stoppedSelling}/>
               </div>
               <div style={{ display:"flex",alignItems:"center",gap:5,marginBottom:5 }}>
                 <div style={{ flex:1,height:5,background:"#f0f0f0",borderRadius:3,overflow:"hidden" }}><div style={{ width:`${pct}%`,height:"100%",background:barC,borderRadius:3 }}/></div>
-                <span style={{ fontSize:10,color:"#aaa" }}>{stats.totalSold}/{book.ticketCount}</span>
+                <span style={{ fontSize:10,color:"#aaa" }}>{stats.totalSold}/{stats.effective}{stats.returned>0?` (+${stats.returned} returned)`:""}</span>
               </div>
               <div style={{ display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:book.status!=="complete"?8:0 }}>
                 <span style={{ color:GREEN,fontWeight:700 }}>Collected: {fmt(stats.totalCollected)}</span>
-                <span style={{ color:stats.pending>0?"#e65100":"#aaa" }}>Pending: {fmt(stats.pending)}</span>
+                <span style={{ color:stats.pending>0?"#e65100":GREEN,fontWeight:stats.pending===0?700:400 }}>Pending: {fmt(stats.pending)}</span>
               </div>
+              {stats.returned>0&&<div style={{ fontSize:10,color:"#e65100",marginBottom:book.status!=="complete"?8:0 }}><i className="ti ti-corner-down-left" style={{ fontSize:11,marginRight:3 }}/>{stats.returned} ticket{stats.returned!==1?"s":""} returned · {book.stopNotes||"Stopped selling"}</div>}
               {book.status!=="complete"&&(
                 book.isCommon?(
                   <button onClick={()=>{setBook(book);setView("common");}} style={{ width:"100%",background:"linear-gradient(135deg,#4a148c,#6a1b9a)",color:"#fff",border:"none",borderRadius:8,padding:"9px",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5 }}>
