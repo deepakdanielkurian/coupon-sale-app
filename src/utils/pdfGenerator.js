@@ -156,7 +156,8 @@ function addMemberWise(doc, data, startY) {
     doc.setTextColor(...DARK); doc.setFontSize(12); doc.setFont("helvetica","bold");
     doc.text(`${member.firstName} ${member.lastName}`,20,y+9);
     doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(...MUTED);
-    doc.text(`${cfg.label}  |  ${member.id}  |  ${member.phone||"—"}`,20,y+17);
+    const memberDisplayId = (member.memberId&&member.memberId.startsWith('NCB-'))?member.memberId:"";
+    doc.text(`${cfg.label}${memberDisplayId?" | "+memberDisplayId:""}  |  ${member.phone||"—"}`,20,y+17);
     doc.setTextColor(...GREEN); doc.text(`Collected: ${fmt(stats.totalCollected)}`,w-20,y+9,{align:"right"});
     doc.setTextColor(...AMBER); doc.text(`Pending: ${fmt(stats.totalPending)}`,w-20,y+17,{align:"right"});
     y+=28;
@@ -351,8 +352,8 @@ export function generateCombinedPDF(selectedIds, data) {
       const y = letterhead(doc, sec.title, sec.subtitle);
       sec.fn(doc, data, y);
     } else {
-      // Section divider page
-      addDividerPage(doc, sec.title, sec.subtitle);
+      // Section heading — no full page, just a header block
+      if (idx > 0) doc.addPage();
       // Content page
       doc.addPage();
       const y = letterhead(doc, sec.title, sec.subtitle);
@@ -389,27 +390,34 @@ export function addRemittanceReport(doc, data, startY) {
   const { remittances, collections, members } = data;
   const w = pageW(doc); let y = startY;
 
-  const totalCollected = collections.reduce((s,c)=>s+(c.amount||0),0);
-  const totalRemitted  = remittances.reduce((s,r)=>s+(r.amount||0),0);
-  const balanceInHand  = totalCollected - totalRemitted;
+  const totalCollected  = collections.reduce((s,c)=>s+(c.amount||0),0);
+  const totalRemitted   = remittances.reduce((s,r)=>s+(r.amount||0),0);
+  // coordReceived = only money that came TO coordinator (not direct-to-treasurer)
+  const coordReceived   = collections.filter(c=>c.paidTo!=="treasurer").reduce((s,c)=>s+(c.amount||0),0);
+  const directVerified  = collections.filter(c=>c.paidTo==="treasurer"&&c.verifiedByCoordinator).reduce((s,c)=>s+(c.amount||0),0);
+  const directPending   = collections.filter(c=>c.paidTo==="treasurer"&&!c.verifiedByCoordinator).reduce((s,c)=>s+(c.amount||0),0);
+  // Pending to send = what coordinator received minus what already remitted
+  const balanceInHand   = Math.max(0, coordReceived - totalRemitted);
 
-  // Mode breakdown from collections
+  // Mode breakdown — coordinator-received only
   const byMode = {cash:0,upi:0,bank:0};
-  collections.forEach(c=>{ byMode[c.paymentMode||"cash"]+=(c.amount||0); });
+  collections.filter(c=>c.paidTo!=="treasurer").forEach(c=>{ byMode[c.paymentMode||"cash"]+=(c.amount||0); });
 
   const bw=(w-28-6)/3;
-  statBox(doc,14,y,bw,"Total collected",fmt(totalCollected),GREEN);
+  statBox(doc,14,y,bw,"Coordinator received",fmt(coordReceived),GREEN);
   statBox(doc,14+bw+3,y,bw,"Total remitted",fmt(totalRemitted),BLUE);
-  statBox(doc,14+(bw+3)*2,y,bw,"Pending to send to treasurer",fmt(balanceInHand),balanceInHand>0?AMBER:GREEN);
+  statBox(doc,14+(bw+3)*2,y,bw,"Pending to remit",fmt(balanceInHand),balanceInHand>0?AMBER:GREEN);
   y+=26;
 
   // Mode breakdown
-  y = secTitle(doc,"Collection by payment mode",y);
+  y = secTitle(doc,"Collection by payment mode (coordinator received)",y);
   const modeRows = [
-    ["Cash",   fmt(byMode.cash)],
-    ["UPI",    fmt(byMode.upi)],
-    ["Bank",   fmt(byMode.bank)],
-    ["Total",  fmt(totalCollected)],
+    ["Cash to coordinator",   fmt(byMode.cash)],
+    ["UPI to coordinator",    fmt(byMode.upi)],
+    ["Bank to coordinator",   fmt(byMode.bank)],
+    ["Direct to treasurer (verified)", fmt(directVerified)],
+    ["Direct to treasurer (pending)",  fmt(directPending)],
+    ["Grand total all collections",    fmt(totalCollected)],
   ];
   autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Mode","Amount"]],body:modeRows,columnStyles:{1:{textColor:GREEN}}});
   y = doc.lastAutoTable.finalY+8;
@@ -445,5 +453,5 @@ export function addRemittanceReport(doc, data, startY) {
   autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Date","Amount","Sent To","Mode","Before","After","Notes"]],body:remRows,columnStyles:{1:{textColor:BLUE},5:{textColor:GREEN}}});
   y = doc.lastAutoTable.finalY+8;
 
-  return grandBox(doc,y,"Balance currently in hand",fmt(balanceInHand));
+  return grandBox(doc,y,balanceInHand===0?"All clear — nothing pending to send":"Pending to remit to treasurer",fmt(balanceInHand));
 }

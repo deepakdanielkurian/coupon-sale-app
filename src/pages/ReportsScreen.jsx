@@ -147,7 +147,7 @@ function ReportPreview({ reportId, data }) {
           <div key={m.id} style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:10 }}>
             <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingBottom:8,borderBottom:"1px solid #f5f5f5" }}>
               <div style={{ width:34,height:34,borderRadius:"50%",background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:cfg.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><Badge type={m.label}/>{m.memberId&&<span style={{fontSize:9,color:"#aaa",marginLeft:5}}>{m.memberId}</span>}</div>
+              <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><Badge type={m.label}/>{m.memberId&&m.memberId.startsWith('NCB-')&&<span style={{fontSize:9,color:"#aaa",marginLeft:5}}>{m.memberId}</span>}</div>
               <div style={{ textAlign:"right" }}><div style={{ fontSize:12,fontWeight:700,color:GREEN }}>{fmt(s.totalCollected)}</div>{s.totalPending>0&&<div style={{ fontSize:10,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
             </div>
             {s.memberBooks.map(book=>{
