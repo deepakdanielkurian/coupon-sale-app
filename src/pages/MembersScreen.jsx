@@ -4,6 +4,7 @@ import { LABELS, getMemberStats, getBookStats, fmt } from "../data/store";
 import { generateMemberId } from "../data/store";
 import { getSeriesFromBook } from "../data/bookConfig";
 import { Badge, SectionLabel, InputField, PrimaryButton, OutlineButton, InfoChip } from "../components/UI";
+import EditCollectionModal from "./EditCollectionModal";
 
 const GREEN = "#1a6b3c";
 const MODE_ICONS  = { cash:"ti-cash", upi:"ti-device-mobile", bank:"ti-building-bank" };
@@ -310,6 +311,7 @@ function MemberDetail({ member, onEdit }) {
 
   const [tab,            setTab]           = useState("overview");
   const [collectingBook, setCollectingBook]= useState(null);
+  const [editingCol,     setEditingCol]    = useState(null);
 
   const byMode = { cash:0, upi:0, bank:0 };
   memberCols.forEach(c=>{ byMode[c.paymentMode||"cash"]+=(c.amount||0); });
@@ -327,6 +329,7 @@ function MemberDetail({ member, onEdit }) {
 
   return(
     <div style={{ background:"#f5f7f5", flex:1, overflowY:"auto", padding:"10px 10px 14px" }}>
+      {editingCol&&<EditCollectionModal col={editingCol} book={books.find(b=>b.id===editingCol.bookId)} onClose={()=>setEditingCol(null)}/>}
 
       {/* Profile card */}
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #eee", padding:"12px 14px", marginBottom:10 }}>
@@ -497,7 +500,7 @@ function MemberDetail({ member, onEdit }) {
                 const mode=col.paymentMode||"cash";
                 return(
                   <div key={col.id} style={{ background:"#fff",borderRadius:10,border:`1px solid ${col.paidTo==="treasurer"&&!col.verifiedByCoordinator?"#ffe082":"#eee"}`,padding:"11px 13px",marginBottom:8 }}>
-                    {/* Row 1: Amount + mode badge */}
+                    {/* Row 1: Amount + mode badge + edit btn */}
                     <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
                       <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                         <div style={{ width:34,height:34,borderRadius:9,background:MODE_BG[mode],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
@@ -521,6 +524,13 @@ function MemberDetail({ member, onEdit }) {
                           <i className="ti ti-circle-check" style={{ fontSize:9,marginRight:2 }}/>To coordinator
                         </span>
                       )}
+                    </div>
+                    {/* Edit button */}
+                    <div style={{ display:"flex",justifyContent:"flex-end",marginBottom:6 }}>
+                      <button onClick={()=>setEditingCol(col)}
+                        style={{ background:"#fff",border:"1px solid #e0e0e0",color:"#555",borderRadius:7,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4 }}>
+                        <i className="ti ti-edit" style={{ fontSize:11 }}/> Edit
+                      </button>
                     </div>
                     {/* Row 2: Detail lines */}
                     <div style={{ borderTop:"1px solid #f5f5f5",paddingTop:6,display:"flex",flexDirection:"column",gap:3 }}>

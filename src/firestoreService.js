@@ -89,6 +89,12 @@ export async function updateBook(id, data) {
 }
 
 // ── Collections ────────────────────────────────────────────────
+export async function updateCollection(id, data) {
+  await updateDoc(doc(db, C.COLLECTIONS, id), { ...data, updatedAt: serverTimestamp() });
+}
+export async function deleteCollection(id) {
+  await deleteDoc(doc(db, C.COLLECTIONS, id));
+}
 export async function addCollection(data) {
   // Write the collection entry first
   const now = new Date();

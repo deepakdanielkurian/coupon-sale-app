@@ -4,6 +4,8 @@ import { LABELS, getBookStats, fmt } from "../data/store";
 import { BOOK_SERIES, ALL_BOOKS, TICKET_PRICE, TOTAL_TICKETS, getSeriesFromBook, getSeriesSummary } from "../data/bookConfig";
 import { fixBookTicketCount } from "../firestoreService";
 import { Badge, SectionLabel, InputField, PrimaryButton, OutlineButton, InfoChip, StatusBadge } from "../components/UI";
+import EditBookModal from "./EditBookModal";
+import EditCollectionModal from "./EditCollectionModal";
 
 const GREEN = "#1a6b3c";
 
@@ -644,6 +646,8 @@ export default function BooksScreen({ triggerCollect }) {
   const { data, addBook, addCollection, stopSelling, resetBook } = useApp();
   const [view,   setView]  = useState("list");
   const [selBook,setBook]  = useState(null);
+  const [editingBook, setEditingBook] = useState(null);
+  const [editingCol,  setEditingCol]  = useState(null);
   const [fSeries,setFS]    = useState("all");
   const [fStatus,setFSt]   = useState("all");
   const [fType,  setFType] = useState("all"); // all | common | member
@@ -695,6 +699,8 @@ export default function BooksScreen({ triggerCollect }) {
 
   return(
     <div style={{ display:"flex",flexDirection:"column",flex:1,overflow:"hidden" }}>
+      {editingBook&&<EditBookModal book={editingBook} onClose={()=>setEditingBook(null)}/>}
+      {editingCol&&<EditCollectionModal col={editingCol} book={data.books.find(b=>b.id===editingCol.bookId)} onClose={()=>setEditingCol(null)}/>}
       <div style={{ background:GREEN,padding:"10px 14px 12px" }}>
         <div style={{ color:"#fff",fontSize:15,fontWeight:700 }}>Coupon books</div>
         <div style={{ color:"rgba(255,255,255,0.65)",fontSize:10,marginTop:1 }}>500 books · 10,000 tickets · Rs.1,000 each</div>
@@ -795,6 +801,10 @@ export default function BooksScreen({ triggerCollect }) {
                 </div>
                 <StatusBadge status={book.status} stopped={book.stoppedSelling}/>
               {(()=>{ const expected=getSeriesFromBook(book.bookNumber)?.ticketsPerBook; return expected&&book.ticketCount!==expected?(<button onClick={async(e)=>{e.stopPropagation();await fixBookTicketCount(book.id,expected);}} style={{ background:"#fff8e1",color:"#e65100",border:"1px solid #ffe082",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0 }}>Fix ({expected}t)</button>):null; })()}
+              <button onClick={e=>{e.stopPropagation();setEditingBook(book);}}
+                style={{ background:"#fff",border:"1px solid #e0e0e0",color:"#555",borderRadius:7,padding:"3px 8px",fontSize:10,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:3,flexShrink:0 }}>
+                <i className="ti ti-edit" style={{ fontSize:11 }}/>Edit
+              </button>
               </div>
               <div style={{ display:"flex",alignItems:"center",gap:5,marginBottom:5 }}>
                 <div style={{ flex:1,height:5,background:"#f0f0f0",borderRadius:3,overflow:"hidden" }}><div style={{ width:`${pct}%`,height:"100%",background:barC,borderRadius:3 }}/></div>

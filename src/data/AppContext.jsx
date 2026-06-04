@@ -7,6 +7,8 @@ import {
   addBook as fbAddBook, updateBook as fbUpdateBook,
   addCollection as fbAddCol, addLog as fbAddLog,
   stopSelling as fbStopSelling,
+  updateCollection as fbUpdateCol,
+  deleteCollection as fbDeleteCol,
   verifyDirectPayment as fbVerify,
   resetBookStatus as fbResetBook,
   addRemittance as fbAddRemittance, listenRemittances,
@@ -110,6 +112,20 @@ export function AppProvider({ children }) {
   async function addCollection(c)    { try{ await fbAddCol(c);         await log("COLLECT_CASH",  `Rs.${c.amount} book ${c.bookId}`);    showToast("Cash collected!"); }     catch(e){ showToast("Failed","error"); } }
 
   // ── App users (super admin only) ──────────────────────────
+  async function updateCollection(id, data) {
+    try {
+      await fbUpdateCol(id, data);
+      await log('EDIT_COLLECTION', `Edited collection entry`);
+      showToast('Collection entry updated');
+    } catch(e) { console.error(e); showToast('Failed','error'); }
+  }
+  async function deleteCollection(id) {
+    try {
+      await fbDeleteCol(id);
+      await log('DELETE_COLLECTION', `Deleted collection ${id}`);
+      showToast('Entry deleted');
+    } catch(e) { showToast('Failed','error'); }
+  }
   async function verifyDirectPayment(colId) {
     try {
       await fbVerify(colId);
@@ -125,7 +141,7 @@ export function AppProvider({ children }) {
   async function deleteUser(id)      { try{ await fbDeleteUser(id);    await log("DELETE_USER",  `Deleted user ${id}`);                  showToast("User removed"); }        catch(e){ showToast("Failed","error"); } }
 
   return (
-    <AppContext.Provider value={{ data, loading, currentUser, appUsers, login, logout, can, addMember, updateMember, deleteMember, addBook, updateBook, addCollection, addUser, updateUser, deleteUser, addRemittance, stopSelling, resetBook, verifyDirectPayment, showToast, toast }}>
+    <AppContext.Provider value={{ data, loading, currentUser, appUsers, login, logout, can, addMember, updateMember, deleteMember, addBook, updateBook, addCollection, addUser, updateUser, deleteUser, addRemittance, stopSelling, resetBook, verifyDirectPayment, updateCollection, deleteCollection, showToast, toast }}>
       {children}
       {toast && (
         <div style={{ position:"fixed", bottom:84, left:"50%", transform:"translateX(-50%)", background:toast.type==="success"?"#2e7d32":"#c62828", color:"#fff", padding:"11px 22px", borderRadius:11, fontSize:13, fontWeight:600, zIndex:9999, whiteSpace:"nowrap", boxShadow:"0 4px 20px rgba(0,0,0,0.18)", display:"flex", alignItems:"center", gap:8 }}>
