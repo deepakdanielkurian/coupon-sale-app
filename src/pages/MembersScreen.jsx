@@ -500,7 +500,7 @@ function MemberDetail({ member, onEdit }) {
                 const mode=col.paymentMode||"cash";
                 return(
                   <div key={col.id} style={{ background:"#fff",borderRadius:10,border:`1px solid ${col.paidTo==="treasurer"&&!col.verifiedByCoordinator?"#ffe082":"#eee"}`,padding:"11px 13px",marginBottom:8 }}>
-                    {/* Row 1: Amount + mode badge + edit btn */}
+                    {/* Row 1: Amount + mode badge + edit */}
                     <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
                       <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                         <div style={{ width:34,height:34,borderRadius:9,background:MODE_BG[mode],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
@@ -524,13 +524,6 @@ function MemberDetail({ member, onEdit }) {
                           <i className="ti ti-circle-check" style={{ fontSize:9,marginRight:2 }}/>To coordinator
                         </span>
                       )}
-                    </div>
-                    {/* Edit button */}
-                    <div style={{ display:"flex",justifyContent:"flex-end",marginBottom:6 }}>
-                      <button onClick={()=>setEditingCol(col)}
-                        style={{ background:"#fff",border:"1px solid #e0e0e0",color:"#555",borderRadius:7,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4 }}>
-                        <i className="ti ti-edit" style={{ fontSize:11 }}/> Edit
-                      </button>
                     </div>
                     {/* Row 2: Detail lines */}
                     <div style={{ borderTop:"1px solid #f5f5f5",paddingTop:6,display:"flex",flexDirection:"column",gap:3 }}>

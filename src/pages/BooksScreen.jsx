@@ -799,12 +799,14 @@ export default function BooksScreen({ triggerCollect }) {
                     {book.isCommon&&<span style={{ marginLeft:5,background:"#4a148c",color:"#fff",fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:4 }}>COMMON</span>}
                   </div>
                 </div>
-                <StatusBadge status={book.status} stopped={book.stoppedSelling}/>
-              {(()=>{ const expected=getSeriesFromBook(book.bookNumber)?.ticketsPerBook; return expected&&book.ticketCount!==expected?(<button onClick={async(e)=>{e.stopPropagation();await fixBookTicketCount(book.id,expected);}} style={{ background:"#fff8e1",color:"#e65100",border:"1px solid #ffe082",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0 }}>Fix ({expected}t)</button>):null; })()}
-              <button onClick={e=>{e.stopPropagation();setEditingBook(book);}}
-                style={{ background:"#fff",border:"1px solid #e0e0e0",color:"#555",borderRadius:7,padding:"3px 8px",fontSize:10,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:3,flexShrink:0 }}>
-                <i className="ti ti-edit" style={{ fontSize:11 }}/>Edit
-              </button>
+                <div style={{ display:"flex",alignItems:"center",gap:5,flexShrink:0 }}>
+                  <StatusBadge status={book.status} stopped={book.stoppedSelling}/>
+                  {(()=>{ const expected=getSeriesFromBook(book.bookNumber)?.ticketsPerBook; return expected&&book.ticketCount!==expected?(<button onClick={async(e)=>{e.stopPropagation();await fixBookTicketCount(book.id,expected);}} style={{ background:"#fff8e1",color:"#e65100",border:"1px solid #ffe082",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700,cursor:"pointer" }}>Fix</button>):null; })()}
+                  <button onClick={e=>{e.stopPropagation();setEditingBook(book);}}
+                    style={{ background:"#f0f9f4",border:`1px solid #a5d6a7`,color:"#1a6b3c",borderRadius:7,padding:"4px 9px",fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:3 }}>
+                    <i className="ti ti-edit" style={{ fontSize:11 }}/>Edit
+                  </button>
+                </div>
               </div>
               <div style={{ display:"flex",alignItems:"center",gap:5,marginBottom:5 }}>
                 <div style={{ flex:1,height:5,background:"#f0f0f0",borderRadius:3,overflow:"hidden" }}><div style={{ width:`${pct}%`,height:"100%",background:barC,borderRadius:3 }}/></div>
