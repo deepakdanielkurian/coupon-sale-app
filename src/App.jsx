@@ -73,7 +73,7 @@ function StatusBar() {
   const { currentUser } = useApp();
   const roleInfo = ROLES[currentUser?.role] || ROLES.viewer;
   return (
-    <div style={{ background:GREEN, padding:"8px 14px 6px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+    <div style={{ background:GREEN, padding:"max(8px, env(safe-area-inset-top)) 14px 6px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
       <span style={{ color:"rgba(255,255,255,0.85)", fontSize:11 }}>
         {new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}
       </span>
@@ -98,7 +98,7 @@ function BottomNav({ active, onNavigate }) {
   ].filter(i => !i.gate || can[i.gate]?.());
 
   return (
-    <div style={{ background:"#fff", borderTop:"1px solid #eee", display:"flex", padding:"5px 0 10px", boxShadow:"0 -2px 10px rgba(0,0,0,0.05)" }}>
+    <div style={{ background:"#fff", borderTop:"1px solid #eee", display:"flex", padding:"5px 0 max(10px, env(safe-area-inset-bottom))", boxShadow:"0 -2px 10px rgba(0,0,0,0.05)", flexShrink:0, position:"relative", zIndex:50 }}>
       {items.map(item => (
         <button key={item.key} onClick={()=>onNavigate(item.key)}
           style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2, color:active===item.key?GREEN:"#bbb", fontSize:9, background:"none", border:"none", cursor:"pointer", padding:"2px 0" }}>
@@ -127,8 +127,8 @@ function AppInner() {
 
   // Sub-screens (full page overlays)
   const subScreenWrap = (child) => (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:420, margin:"0 auto" }}>
-      <StatusBar/>{child}<BottomNav active="settings" onNavigate={navigate}/>
+    <div style={{ display:"flex", flexDirection:"column", height:"100dvh", maxWidth:420, margin:"0 auto" }}>
+      <StatusBar/><div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0 }}>{child}</div><BottomNav active="settings" onNavigate={navigate}/>
     </div>
   );
   if (sub==="logs"   && can.viewLogs())    return subScreenWrap(<ActivityLogScreen    onBack={()=>setSub(null)}/>);
@@ -146,11 +146,11 @@ function AppInner() {
   };
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", maxWidth:420, margin:"0 auto", background:"#f5f7f5", fontFamily:"system-ui,-apple-system,sans-serif" }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100dvh", maxWidth:420, margin:"0 auto", background:"#f5f7f5", fontFamily:"system-ui,-apple-system,sans-serif" }}>
       <StatusBar/>
       {fullScreen.includes(active)
-        ? <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>{screens[active]}</div>
-        : <div style={{ flex:1, overflowY:"auto" }}>{screens[active]}</div>
+        ? <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0 }}>{screens[active]}</div>
+        : <div style={{ flex:1, overflowY:"auto", minHeight:0 }}>{screens[active]}</div>
       }
       <BottomNav active={active} onNavigate={navigate}/>
     </div>
