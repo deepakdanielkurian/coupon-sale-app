@@ -172,15 +172,27 @@ export default function RemittanceScreen({ onBack }) {
               const member = members.find(m => m.id===col.memberId || m.memberId===col.memberId);
               const book   = books.find(b => b.id===col.bookId);
               const busy   = verifying === col.id;
-              const initials = member ? (member.firstName[0]+member.lastName[0]).toUpperCase() : "?";
+              const isCommon = col.isCommon || book?.isCommon;
+              // Common ticket buyer names (if any)
+              const buyerNames = (col.ticketEntries||[]).map(e=>e.buyerName).filter(Boolean);
+              const displayName = isCommon
+                ? (buyerNames.length > 0 ? buyerNames.join(", ") : "Common book sale")
+                : (member ? `${member.firstName} ${member.lastName}` : "Unknown");
+              const initials = isCommon
+                ? "C"
+                : member ? (member.firstName[0]+member.lastName[0]).toUpperCase() : "?";
               return (
                 <div key={col.id} style={{ background:"#fff", borderRadius:11, border:"1px solid #ffe082", padding:"11px 13px", marginBottom:8 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-                    <div style={{ width:34, height:34, borderRadius:"50%", background:"#e8f5ee", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:GREEN, flexShrink:0 }}>{initials}</div>
+                    <div style={{ width:34, height:34, borderRadius:"50%", background:isCommon?"#f3e5f5":"#e8f5ee", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:isCommon?"#4a148c":GREEN, flexShrink:0 }}>{initials}</div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>{member ? `${member.firstName} ${member.lastName}` : "Unknown"}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>
+                        {displayName}
+                        {isCommon && <span style={{ fontSize:8, fontWeight:700, background:"#4a148c", color:"#fff", padding:"1px 5px", borderRadius:4, marginLeft:5, verticalAlign:"middle" }}>COMMON</span>}
+                      </div>
                       <div style={{ fontSize:10, color:"#888", marginTop:1 }}>
                         {col.date} · {(col.paymentMode||"cash").toUpperCase()} · Book {book?.bookNumber||"—"}
+                        {isCommon && col.ticketEntries && ` · ${col.ticketEntries.length} ticket(s)`}
                       </div>
                     </div>
                     <div style={{ textAlign:"right" }}>
