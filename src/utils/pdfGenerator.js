@@ -103,7 +103,11 @@ function addSummary(doc, data, startY) {
     const sb = books.filter(b=>b.series===key||b.bookNumber?.startsWith(key));
     const sc = sb.reduce((sum,b)=>sum+collections.filter(c=>c.bookId===b.id).reduce((s2,c)=>s2+(c.amount||0),0),0);
     const ss = sb.reduce((sum,b)=>sum+collections.filter(c=>c.bookId===b.id).reduce((s2,c)=>s2+(c.ticketsSold||0),0),0);
-    return [`${key} Series`,`${s.ticketsPerBook} tickets/book`,`${s.totalBooks} books`,`${s.ticketStart}–${s.ticketEnd}`,`${ss}/${s.totalBooks*s.ticketsPerBook}`,fmt(sc),fmt(s.totalBooks*s.ticketsPerBook*TICKET_PRICE-sc)];
+    // Ticket range from actual books (A & B are segmented across two ranges)
+    const froms = sb.map(b=>b.ticketFrom).filter(n=>n!=null);
+    const tos   = sb.map(b=>b.ticketTo).filter(n=>n!=null);
+    const range = froms.length ? `${Math.min(...froms)}–${Math.max(...tos)}` : "—";
+    return [`${key} Series`,`${s.ticketsPerBook} tickets/book`,`${s.totalBooks} books`,range,`${ss}/${s.totalBooks*s.ticketsPerBook}`,fmt(sc),fmt(s.totalBooks*s.ticketsPerBook*TICKET_PRICE-sc)];
   });
   autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Series","Type","Total Books","Ticket Range","Tickets Sold","Collected","Pending"]],body:serRows,columnStyles:{5:{textColor:GREEN},6:{textColor:AMBER}}});
   y = doc.lastAutoTable.finalY+8;
@@ -151,13 +155,20 @@ function addMemberWise(doc, data, startY) {
     const stats = getMemberStats(member.id,books,collections);
     const cfg   = LABELS[member.label]||LABELS.committee_member;
 
+    // Last collected date for this member
+    const memberCols = collections.filter(c => c.memberId===member.id || (member.memberId && c.memberId===member.memberId));
+    const lastDate = memberCols.length > 0
+      ? memberCols.map(c => c.date).sort().reverse()[0]
+      : null;
+
     // Member header
     doc.setFillColor(...LIGHT); doc.roundedRect(14,y,w-28,22,2,2,"F");
     doc.setTextColor(...DARK); doc.setFontSize(12); doc.setFont("helvetica","bold");
     doc.text(`${member.firstName} ${member.lastName}`,20,y+9);
     doc.setFontSize(8); doc.setFont("helvetica","normal"); doc.setTextColor(...MUTED);
     const memberDisplayId = (member.memberId&&member.memberId.startsWith('NCB-'))?member.memberId:"";
-    doc.text(`${cfg.label}${memberDisplayId?" | "+memberDisplayId:""}  |  ${member.phone||"—"}`,20,y+17);
+    const lastTxt = lastDate ? `  |  Last collected: ${lastDate}` : "";
+    doc.text(`${cfg.label}${memberDisplayId?" | "+memberDisplayId:""}  |  ${member.phone||"—"}${lastTxt}`,20,y+17);
     doc.setTextColor(...GREEN); doc.text(`Collected: ${fmt(stats.totalCollected)}`,w-20,y+9,{align:"right"});
     doc.setTextColor(...AMBER); doc.text(`Pending: ${fmt(stats.totalPending)}`,w-20,y+17,{align:"right"});
     y+=28;

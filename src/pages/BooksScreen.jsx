@@ -573,7 +573,7 @@ function AssignBookForm({ onSave, onCancel }) {
             );
           })}
         </div>
-        {seriesInfo&&<div style={{ marginTop:8,background:seriesInfo.bg,borderRadius:8,padding:"7px 10px" }}><div style={{ fontSize:10,fontWeight:600,color:seriesInfo.color }}>{seriesInfo.name} · Tickets {seriesInfo.ticketStart}–{seriesInfo.ticketEnd} · {available.length} available</div></div>}
+        {seriesInfo&&<div style={{ marginTop:8,background:seriesInfo.bg,borderRadius:8,padding:"7px 10px" }}><div style={{ fontSize:10,fontWeight:600,color:seriesInfo.color }}>{seriesInfo.name} · {seriesInfo.ticketsPerBook} tickets/book · {available.length} available</div></div>}
       </div>
 
       {/* Book number select + add */}
@@ -738,7 +738,7 @@ export default function BooksScreen({ triggerCollect }) {
             <div key={s.key} style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:7 }}>
               <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:6 }}>
                 <div style={{ width:30,height:30,borderRadius:7,background:s.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:s.color,flexShrink:0 }}>{s.key}</div>
-                <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{s.name} · {s.ticketsPerBook}t/book</div><div style={{ fontSize:10,color:"#aaa" }}>{s.totalBooks} books · Tickets {s.ticketStart}–{s.ticketEnd}</div></div>
+                <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{s.name} · {s.ticketsPerBook}t/book</div><div style={{ fontSize:10,color:"#aaa" }}>{s.totalBooks} books · {s.ticketsPerBook} tickets each</div></div>
                 <div style={{ textAlign:"right" }}><div style={{ fontSize:12,fontWeight:700,color:GREEN }}>{fmt(s.collected)}</div><div style={{ fontSize:10,color:"#aaa" }}>{s.assignedBooks}/{s.totalBooks}</div></div>
               </div>
               <div style={{ display:"flex",alignItems:"center",gap:5 }}>
