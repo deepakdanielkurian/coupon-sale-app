@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { BOOK_SERIES, TOTAL_TICKETS, TICKET_PRICE, getSeriesFromBook } from "../data/bookConfig";
+import { BOOK_SERIES, ALL_BOOKS, TOTAL_TICKETS, TICKET_PRICE, getSeriesFromBook } from "../data/bookConfig";
 import { getBookStats, getMemberStats, LABELS, fmt } from "../data/store";
 
 const RED=[139,0,0], GOLD=[255,215,0], WHITE=[255,255,255];
@@ -103,9 +103,10 @@ function addSummary(doc, data, startY) {
     const sb = books.filter(b=>b.series===key||b.bookNumber?.startsWith(key));
     const sc = sb.reduce((sum,b)=>sum+collections.filter(c=>c.bookId===b.id).reduce((s2,c)=>s2+(c.amount||0),0),0);
     const ss = sb.reduce((sum,b)=>sum+collections.filter(c=>c.bookId===b.id).reduce((s2,c)=>s2+(c.ticketsSold||0),0),0);
-    // Ticket range from actual books (A & B are segmented across two ranges)
-    const froms = sb.map(b=>b.ticketFrom).filter(n=>n!=null);
-    const tos   = sb.map(b=>b.ticketTo).filter(n=>n!=null);
+    // Ticket range from MASTER config (ALL_BOOKS), not just assigned books
+    const masterBooks = ALL_BOOKS.filter(b=>b.series===key);
+    const froms = masterBooks.map(b=>b.ticketFrom).filter(n=>n!=null);
+    const tos   = masterBooks.map(b=>b.ticketTo).filter(n=>n!=null);
     const range = froms.length ? `${Math.min(...froms)}–${Math.max(...tos)}` : "—";
     return [`${key} Series`,`${s.ticketsPerBook} tickets/book`,`${s.totalBooks} books`,range,`${ss}/${s.totalBooks*s.ticketsPerBook}`,fmt(sc),fmt(s.totalBooks*s.ticketsPerBook*TICKET_PRICE-sc)];
   });
