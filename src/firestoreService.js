@@ -88,6 +88,34 @@ export async function updateBook(id, data) {
   await updateDoc(doc(db, C.BOOKS, id), { ...data, updatedAt: serverTimestamp() });
 }
 
+// Delete all collection entries belonging to a book (used when reassigning ticket range)
+export async function deleteCollectionsForBook(bookId) {
+  const snap = await getDocs(collection(db, C.COLLECTIONS));
+  const toDelete = snap.docs.filter(d => (d.data().bookId === bookId));
+  for (const d of toDelete) {
+    await deleteDoc(doc(db, C.COLLECTIONS, d.id));
+  }
+  return toDelete.length;
+}
+
+// Completely delete (unassign) a book and all its collections
+export async function deleteBook(bookId) {
+  await deleteCollectionsForBook(bookId);
+  await deleteDoc(doc(db, C.BOOKS, bookId));
+}
+
+// Change a book's number/series/ticket range — clears collections (fresh start)
+export async function reassignBookRange(bookId, newBookData) {
+  await deleteCollectionsForBook(bookId);
+  await updateDoc(doc(db, C.BOOKS, bookId), {
+    ...newBookData,
+    status: "not_started",
+    returnedTickets: 0,
+    stoppedSelling: false,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 // ── Collections ────────────────────────────────────────────────
 export async function updateCollection(id, data) {
   await updateDoc(doc(db, C.COLLECTIONS, id), { ...data, updatedAt: serverTimestamp() });
