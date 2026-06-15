@@ -116,7 +116,7 @@ function addSummary(doc, data, startY) {
   y = secTitle(doc,"Member collection summary",y);
   const memRows = members.map(m=>{
     const s = getMemberStats(m.id,books,collections);
-    return [`${m.firstName} ${m.lastName}`,LABELS[m.label]?.label||m.label,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,fmt(s.totalCollected),fmt(s.totalPending),s.totalPending===0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
+    return [`${m.firstName} ${m.lastName}`,LABELS[m.label]?.label||m.label,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,fmt(s.totalCollected),fmt(s.totalPending),s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
   });
   autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Category","Books","Tickets","Collected","Pending","Status"]],body:memRows,columnStyles:{4:{textColor:GREEN},5:{textColor:AMBER}}});
   return doc.lastAutoTable.finalY+10;
