@@ -101,7 +101,7 @@ export function AppProvider({ children }) {
   const data = { members, books, collections, logs, remittances, org, coordinator:{ name:currentUser?.name||"Coordinator", role:currentUser?.role||"super_admin" } };
 
   // ── Member CRUD ───────────────────────────────────────────
-  async function addMember(m)        { try{ await fbAdd(m);           await log("ADD_MEMBER",    `Added ${m.firstName} ${m.lastName}`);  showToast("Member added"); }       catch(e){ showToast("Failed","error"); } }
+  async function addMember(m)        { try{ const id = await fbAdd(m); await log("ADD_MEMBER",    `Added ${m.firstName} ${m.lastName}`);  showToast("Member added"); return id; } catch(e){ showToast("Failed","error"); return null; } }
   async function updateMember(id,u)  { try{ await fbUpdate(id,u);     await log("EDIT_MEMBER",   `Updated ${id}`);                       showToast("Member updated"); }      catch(e){ showToast("Failed","error"); } }
   async function deleteMember(id)    { try{ await fbDelete(id);        await log("DELETE_MEMBER", `Deleted ${id}`);                       showToast("Member removed"); }      catch(e){ showToast("Failed","error"); } }
 

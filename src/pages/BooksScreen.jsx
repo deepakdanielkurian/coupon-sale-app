@@ -445,8 +445,14 @@ function CollectCashForm({ book, onSave, onStop, onCancel }) {
 
 // ── Assign Book Form ──────────────────────────────────────────
 function AssignBookForm({ onSave, onCancel }) {
-  const { data } = useApp();
+  const { data, addMember } = useApp();
   const [memberId,   setMemberId]  = useState("");
+  // Searchable member picker + inline create
+  const [memberSearch, setMemberSearch] = useState("");
+  const [showMemberList, setShowMemberList] = useState(false);
+  const [creatingMember, setCreatingMember] = useState(false);
+  const [newM, setNewM] = useState({ firstName:"", lastName:"", phone:"", label:"committee_member" });
+  const [savingMember, setSavingMember] = useState(false);
   const [isCommon,   setIsCommon]  = useState(false);
   const [series,     setSeries]    = useState("");
   const [bookNumber, setBookNumber]= useState("");
@@ -469,6 +475,35 @@ function AssignBookForm({ onSave, onCancel }) {
     setCurrent("");
   }
   function removeBook(num) { setAssigned(prev=>prev.filter(b=>b!==num)); }
+
+  // Filtered member list for search
+  const filteredMembers = data.members.filter(m => {
+    const q = memberSearch.trim().toLowerCase();
+    if (!q) return true;
+    return `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
+        || (m.phone||"").includes(q)
+        || (m.memberId||"").toLowerCase().includes(q);
+  });
+
+  async function handleCreateMember() {
+    if (!newM.firstName.trim()) { return; }
+    setSavingMember(true);
+    const id = await addMember({
+      firstName: newM.firstName.trim(),
+      lastName:  newM.lastName.trim(),
+      phone:     newM.phone.trim(),
+      label:     newM.label,
+      createdAt: new Date().toISOString().split("T")[0],
+    });
+    setSavingMember(false);
+    if (id) {
+      setMemberId(id);
+      setCreatingMember(false);
+      setShowMemberList(false);
+      setMemberSearch("");
+      setNewM({ firstName:"", lastName:"", phone:"", label:"committee_member" });
+    }
+  }
 
   function validate() {
     const e = {};
@@ -538,17 +573,87 @@ function AssignBookForm({ onSave, onCancel }) {
       {!isCommon&&(
         <div style={{ background:"#fff",borderRadius:12,border:"1px solid #eee",padding:"12px 14px",marginBottom:10 }}>
           <div style={{ fontSize:11,fontWeight:700,color:"#aaa",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8 }}>Step 1 — Select member</div>
-          <select value={memberId} onChange={e=>{setMemberId(e.target.value);setErrors(v=>({...v,member:""}));}}
-            style={{ width:"100%",background:"#f8faf8",border:`1.5px solid ${errors.member?"#dc2626":memberId?GREEN:"#e0e0e0"}`,borderRadius:9,padding:"10px 11px",fontSize:13,color:"#1a1a1a",outline:"none",boxSizing:"border-box" }}>
-            <option value="">— choose member —</option>
-            {data.members.map(m=><option key={m.id} value={m.id}>{m.firstName} {m.lastName} — {LABELS[m.label]?.label||m.label}</option>)}
-          </select>
-          {errors.member&&<div style={{ fontSize:10,color:"#dc2626",marginTop:3 }}>{errors.member}</div>}
-          {member&&(
-            <div style={{ display:"flex",alignItems:"center",gap:10,marginTop:8,background:"#f8faf8",borderRadius:9,padding:"8px 10px" }}>
+
+          {/* Selected member chip */}
+          {member && !creatingMember && (
+            <div style={{ display:"flex",alignItems:"center",gap:10,background:"#f0f9f4",border:`1.5px solid ${GREEN}`,borderRadius:9,padding:"8px 10px",marginBottom:8 }}>
               <div style={{ width:32,height:32,borderRadius:9,background:LABELS[member.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:LABELS[member.label]?.color,flexShrink:0 }}>{(member.firstName[0]+member.lastName[0]).toUpperCase()}</div>
               <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{member.firstName} {member.lastName}</div><span style={{ fontSize:9,fontWeight:600,padding:"2px 6px",borderRadius:5,background:LABELS[member.label]?.bg,color:LABELS[member.label]?.color }}>{LABELS[member.label]?.label}</span></div>
-              <div style={{ fontSize:11,fontWeight:700,color:"#2C2C2A" }}>{memberDBBks.length} book{memberDBBks.length!==1?"s":""}</div>
+              <div style={{ fontSize:11,fontWeight:700,color:"#2C2C2A",marginRight:6 }}>{memberDBBks.length} book{memberDBBks.length!==1?"s":""}</div>
+              <button onClick={()=>{setMemberId("");setShowMemberList(false);}} style={{ background:"none",border:"none",color:"#999",cursor:"pointer",fontSize:16 }}>✕</button>
+            </div>
+          )}
+
+          {/* Search box + dropdown (when no member selected) */}
+          {!member && !creatingMember && (
+            <div style={{ position:"relative" }}>
+              <div style={{ display:"flex",alignItems:"center",background:"#f8faf8",border:`1.5px solid ${errors.member?"#dc2626":"#e0e0e0"}`,borderRadius:9,padding:"2px 10px" }}>
+                <i className="ti ti-search" style={{ color:"#aaa",fontSize:15 }}/>
+                <input
+                  value={memberSearch}
+                  onChange={e=>{setMemberSearch(e.target.value);setShowMemberList(true);}}
+                  onFocus={()=>setShowMemberList(true)}
+                  placeholder="Search member by name or phone..."
+                  style={{ flex:1,background:"transparent",border:"none",padding:"9px 8px",fontSize:13,outline:"none" }}/>
+              </div>
+              {errors.member&&<div style={{ fontSize:10,color:"#dc2626",marginTop:3 }}>{errors.member}</div>}
+
+              {showMemberList && (
+                <div style={{ marginTop:6,maxHeight:240,overflowY:"auto",border:"1px solid #eee",borderRadius:9,background:"#fff" }}>
+                  {filteredMembers.length===0 && (
+                    <div style={{ padding:"12px",textAlign:"center",fontSize:11,color:"#aaa" }}>No members match "{memberSearch}"</div>
+                  )}
+                  {filteredMembers.map(m=>(
+                    <div key={m.id} onClick={()=>{setMemberId(m.id);setShowMemberList(false);setMemberSearch("");setErrors(v=>({...v,member:""}));}}
+                      style={{ display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderBottom:"0.5px solid #f5f5f5",cursor:"pointer" }}>
+                      <div style={{ width:28,height:28,borderRadius:7,background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+(m.lastName[0]||"")).toUpperCase()}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:12,fontWeight:600,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div>
+                        <div style={{ fontSize:10,color:"#888" }}>{LABELS[m.label]?.label}{m.phone?` · ${m.phone}`:""}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Add new member option */}
+                  <div onClick={()=>{setCreatingMember(true);setShowMemberList(false);setNewM(v=>({...v,firstName:memberSearch.trim()}));}}
+                    style={{ display:"flex",alignItems:"center",gap:9,padding:"10px",cursor:"pointer",background:"#f0f9f4" }}>
+                    <div style={{ width:28,height:28,borderRadius:7,background:GREEN,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                      <i className="ti ti-plus" style={{ color:"#fff",fontSize:16 }}/>
+                    </div>
+                    <div style={{ fontSize:12,fontWeight:700,color:GREEN }}>Create new member{memberSearch.trim()?` "${memberSearch.trim()}"`:""}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Inline create member form */}
+          {creatingMember && (
+            <div style={{ background:"#f0f9f4",border:`1.5px solid ${GREEN}`,borderRadius:10,padding:"12px" }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
+                <div style={{ fontSize:12,fontWeight:700,color:GREEN }}><i className="ti ti-user-plus" style={{ marginRight:5 }}/>New member</div>
+                <button onClick={()=>setCreatingMember(false)} style={{ background:"none",border:"none",color:"#999",cursor:"pointer",fontSize:16 }}>✕</button>
+              </div>
+              <div style={{ display:"flex",gap:8,marginBottom:8 }}>
+                <input value={newM.firstName} onChange={e=>setNewM(v=>({...v,firstName:e.target.value}))} placeholder="First name *"
+                  style={{ flex:1,background:"#fff",border:`1.5px solid ${newM.firstName?GREEN:"#e0e0e0"}`,borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",boxSizing:"border-box" }}/>
+                <input value={newM.lastName} onChange={e=>setNewM(v=>({...v,lastName:e.target.value}))} placeholder="Last name"
+                  style={{ flex:1,background:"#fff",border:"1.5px solid #e0e0e0",borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",boxSizing:"border-box" }}/>
+              </div>
+              <input value={newM.phone} onChange={e=>setNewM(v=>({...v,phone:e.target.value}))} placeholder="Phone (optional)"
+                style={{ width:"100%",background:"#fff",border:"1.5px solid #e0e0e0",borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",boxSizing:"border-box",marginBottom:8 }}/>
+              <div style={{ fontSize:10,fontWeight:600,color:"#555",marginBottom:5 }}>Category</div>
+              <div style={{ display:"flex",flexWrap:"wrap",gap:5,marginBottom:10 }}>
+                {Object.entries(LABELS).filter(([k])=>k!=="common").map(([k,v])=>(
+                  <div key={k} onClick={()=>setNewM(p=>({...p,label:k}))}
+                    style={{ border:`1.5px solid ${newM.label===k?v.color:"#e0e0e0"}`,borderRadius:7,padding:"5px 9px",fontSize:10,fontWeight:600,cursor:"pointer",background:newM.label===k?v.bg:"#fff",color:newM.label===k?v.color:"#888" }}>
+                    {v.label}
+                  </div>
+                ))}
+              </div>
+              <button onClick={handleCreateMember} disabled={savingMember||!newM.firstName.trim()}
+                style={{ width:"100%",background:(savingMember||!newM.firstName.trim())?"#ccc":`linear-gradient(135deg,${GREEN},#2e7d32)`,color:"#fff",border:"none",borderRadius:9,padding:"10px",fontSize:12,fontWeight:700,cursor:(savingMember||!newM.firstName.trim())?"not-allowed":"pointer" }}>
+                <i className="ti ti-check" style={{ marginRight:5 }}/>{savingMember?"Creating...":"Create & select"}
+              </button>
             </div>
           )}
         </div>
