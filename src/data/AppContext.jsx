@@ -5,7 +5,7 @@ import {
   listenMembers, listenBooks, listenCollections, listenLogs,
   addMember as fbAdd, updateMember as fbUpdate, deleteMember as fbDelete,
   addBook as fbAddBook, updateBook as fbUpdateBook,
-  deleteBook as fbDeleteBook, reassignBookRange as fbReassignBook,
+  deleteBook as fbDeleteBook, reassignBookRange as fbReassignBook, handoverBook as fbHandover,
   addCollection as fbAddCol, addLog as fbAddLog,
   stopSelling as fbStopSelling,
   updateCollection as fbUpdateCol,
@@ -110,6 +110,7 @@ export function AppProvider({ children }) {
   async function updateBook(id,u)    { try{ await fbUpdateBook(id,u);  await log("EDIT_BOOK",     `Book ${id}`);                         showToast("Book updated"); }        catch(e){ showToast("Failed","error"); } }
   async function deleteBook(id)      { try{ await fbDeleteBook(id);    await log("DELETE_BOOK",   `Unassigned book ${id}`);            showToast("Book unassigned & collections cleared"); } catch(e){ console.error(e); showToast("Failed","error"); } }
   async function reassignBookRange(id, newData) { try{ await fbReassignBook(id, newData); await log("REASSIGN_BOOK", `Book ${id} reassigned`); showToast("Book reassigned — collections cleared"); } catch(e){ console.error(e); showToast("Failed","error"); } }
+  async function handoverBook(id, fromId, toId) { try{ await fbHandover(id, fromId, toId); await log("HANDOVER_BOOK", `Book ${id} handed over`); showToast("Book handed over"); } catch(e){ console.error(e); showToast("Failed","error"); } }
 
   // ── Collection ────────────────────────────────────────────
   async function addCollection(c)    { try{ await fbAddCol(c);         await log("COLLECT_CASH",  `Rs.${c.amount} book ${c.bookId}`);    showToast("Cash collected!"); }     catch(e){ showToast("Failed","error"); } }
@@ -144,7 +145,7 @@ export function AppProvider({ children }) {
   async function deleteUser(id)      { try{ await fbDeleteUser(id);    await log("DELETE_USER",  `Deleted user ${id}`);                  showToast("User removed"); }        catch(e){ showToast("Failed","error"); } }
 
   return (
-    <AppContext.Provider value={{ data, loading, currentUser, appUsers, login, logout, can, addMember, updateMember, deleteMember, addBook, updateBook, deleteBook, reassignBookRange, addCollection, addUser, updateUser, deleteUser, addRemittance, stopSelling, resetBook, verifyDirectPayment, updateCollection, deleteCollection, showToast, toast }}>
+    <AppContext.Provider value={{ data, loading, currentUser, appUsers, login, logout, can, addMember, updateMember, deleteMember, addBook, updateBook, deleteBook, reassignBookRange, handoverBook, addCollection, addUser, updateUser, deleteUser, addRemittance, stopSelling, resetBook, verifyDirectPayment, updateCollection, deleteCollection, showToast, toast }}>
       {children}
       {toast && (
         <div style={{ position:"fixed", bottom:84, left:"50%", transform:"translateX(-50%)", background:toast.type==="success"?"#2e7d32":"#c62828", color:"#fff", padding:"11px 22px", borderRadius:11, fontSize:13, fontWeight:600, zIndex:9999, whiteSpace:"nowrap", boxShadow:"0 4px 20px rgba(0,0,0,0.18)", display:"flex", alignItems:"center", gap:8 }}>

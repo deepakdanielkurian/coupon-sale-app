@@ -65,7 +65,12 @@ export function getMemberStats(memberId, books, collections) {
       toCoordinator += amt;
     }
   });
-  return { memberBooks: mb, totalCollected, totalPending, totalTickets, soldTickets, toCoordinator, directTreasurer, pendingVerify };
+  // Books this member originally owned but has handed over to someone else
+  const handedOverBooks = books.filter(b =>
+    b.originalMemberId === memberId && b.memberId !== memberId
+  );
+
+  return { memberBooks: mb, handedOverBooks, totalCollected, totalPending, totalTickets, soldTickets, toCoordinator, directTreasurer, pendingVerify };
 }
 
 export function fmt(num) {

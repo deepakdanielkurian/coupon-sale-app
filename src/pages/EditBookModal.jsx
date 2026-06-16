@@ -5,9 +5,10 @@ import { ALL_BOOKS, BOOK_SERIES, getSeriesFromBook } from "../data/bookConfig";
 const GREEN = "#1a6b3c";
 
 export default function EditBookModal({ book, onClose }) {
-  const { data, updateBook, deleteBook, reassignBookRange, showToast } = useApp();
+  const { data, updateBook, deleteBook, reassignBookRange, handoverBook, showToast } = useApp();
 
   const currentMember = data.members.find(m => m.id===book.memberId || m.memberId===book.memberId);
+  const originalOwner = book.originalMemberId ? data.members.find(m => m.id===book.originalMemberId || m.memberId===book.originalMemberId) : null;
   const hasCollections = data.collections.some(c => c.bookId === book.id);
 
   const [mode,      setMode]      = useState("details"); // details | range | unassign
@@ -17,6 +18,7 @@ export default function EditBookModal({ book, onClose }) {
   const [newBookNo, setNewBookNo] = useState(book.bookNumber);
   const [saving,    setSaving]    = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [handoverTo, setHandoverTo] = useState("");
 
   // Books already assigned (to prevent double-assign) — exclude current book
   const assignedNumbers = new Set(data.books.filter(b=>b.id!==book.id).map(b=>b.bookNumber));
@@ -55,6 +57,15 @@ export default function EditBookModal({ book, onClose }) {
   }
 
   // ── Unassign / delete book entirely ──
+  async function handleHandover() {
+    if (!handoverTo) { showToast("Select who to hand over to","error"); return; }
+    if (handoverTo === book.memberId) { showToast("Already with this member","error"); return; }
+    setSaving(true);
+    await handoverBook(book.id, book.memberId, handoverTo);
+    setSaving(false);
+    onClose();
+  }
+
   async function handleUnassign() {
     if (confirmText.trim().toUpperCase() !== "DELETE") {
       showToast("Type DELETE to confirm","error"); return;
@@ -84,6 +95,7 @@ export default function EditBookModal({ book, onClose }) {
           {[
             {k:"details", label:"Details", icon:"ti-user"},
             {k:"range",   label:"Book/Range", icon:"ti-ticket"},
+            {k:"handover",label:"Hand over", icon:"ti-arrows-exchange"},
             {k:"unassign",label:"Unassign", icon:"ti-trash"},
           ].map(t=>(
             <button key={t.k} onClick={()=>setMode(t.k)}
@@ -195,6 +207,56 @@ export default function EditBookModal({ book, onClose }) {
                 style={{ width:"100%", background:(saving||!rangeChanged)?"#ccc":"linear-gradient(135deg,#c62828,#8b0000)", color:"#fff", border:"none", borderRadius:10, padding:"12px", fontSize:13, fontWeight:700, cursor:(saving||!rangeChanged)?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 <i className="ti ti-refresh" style={{ fontSize:15 }}/>
                 {!rangeChanged ? "Select a different book" : saving ? "Saving..." : "Change book & clear collections"}
+              </button>
+            </>
+          )}
+
+          {/* ─── HANDOVER MODE ─── */}
+          {mode==="handover" && (
+            <>
+              <div style={{ background:"#e3f2fd", border:"1px solid #90caf9", borderRadius:8, padding:"9px 11px", marginBottom:12, display:"flex", gap:7 }}>
+                <i className="ti ti-info-circle" style={{ color:"#1565c0", fontSize:15, flexShrink:0 }}/>
+                <span style={{ fontSize:11, color:"#1565c0", lineHeight:1.5 }}>
+                  Hand this book to a friend who will sell it. The book moves to them, but it stays marked as <strong>originally from {currentMember?`${currentMember.firstName} ${currentMember.lastName}`:"the owner"}</strong>. All collections are kept, and reports show both names.
+                </span>
+              </div>
+
+              {/* Current holder + original owner */}
+              <div style={{ background:"#f5f7f5", borderRadius:9, padding:"10px 12px", marginBottom:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                  <span style={{ fontSize:11, color:"#888" }}>Currently held by</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:"#1a1a1a" }}>{currentMember?`${currentMember.firstName} ${currentMember.lastName}`:"Common pool"}</span>
+                </div>
+                {originalOwner && originalOwner.id !== currentMember?.id && (
+                  <div style={{ display:"flex", justifyContent:"space-between" }}>
+                    <span style={{ fontSize:11, color:"#888" }}>Originally from</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:"#1565c0" }}>{originalOwner.firstName} {originalOwner.lastName}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginBottom:12 }}>
+                <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:4 }}>Hand over to *</div>
+                <select value={handoverTo} onChange={e=>setHandoverTo(e.target.value)}
+                  style={{ width:"100%", background:"#f8faf8", border:`1.5px solid ${handoverTo?"#1565c0":"#e0e0e0"}`, borderRadius:9, padding:"10px 11px", fontSize:13, color:"#1a1a1a", outline:"none", boxSizing:"border-box" }}>
+                  <option value="">— choose member —</option>
+                  {data.members.filter(m=>m.id!==book.memberId).map(m=>(
+                    <option key={m.id} value={m.id}>{m.firstName} {m.lastName}</option>
+                  ))}
+                </select>
+              </div>
+
+              {handoverTo && (
+                <div style={{ background:"#e8f5ee", border:"1px solid #a5d6a7", borderRadius:9, padding:"10px 12px", marginBottom:12, fontSize:11, color:"#1a6b3c", lineHeight:1.6 }}>
+                  <i className="ti ti-arrows-exchange" style={{ marginRight:5 }}/>
+                  Book {book.bookNumber} will move to <strong>{data.members.find(m=>m.id===handoverTo)?.firstName} {data.members.find(m=>m.id===handoverTo)?.lastName}</strong>.
+                  It will still show as originally from <strong>{(originalOwner||currentMember)?`${(originalOwner||currentMember).firstName} ${(originalOwner||currentMember).lastName}`:"the owner"}</strong>.
+                </div>
+              )}
+
+              <button onClick={handleHandover} disabled={saving||!handoverTo}
+                style={{ width:"100%", background:(saving||!handoverTo)?"#ccc":"linear-gradient(135deg,#1565c0,#0d47a1)", color:"#fff", border:"none", borderRadius:10, padding:"12px", fontSize:13, fontWeight:700, cursor:(saving||!handoverTo)?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                <i className="ti ti-arrows-exchange" style={{ fontSize:15 }}/>{saving?"Handing over...":"Hand over book"}
               </button>
             </>
           )}

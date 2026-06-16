@@ -88,6 +88,21 @@ export async function updateBook(id, data) {
   await updateDoc(doc(db, C.BOOKS, id), { ...data, updatedAt: serverTimestamp() });
 }
 
+// Hand over a book to another member, remembering the original owner.
+// Keeps all collections; book now belongs to newMemberId but tracks originalMemberId.
+export async function handoverBook(bookId, currentMemberId, newMemberId) {
+  const snap = await getDoc(doc(db, C.BOOKS, bookId));
+  const existing = snap.exists() ? snap.data() : {};
+  // Preserve the very first owner (if already handed over before, keep original)
+  const originalMemberId = existing.originalMemberId || currentMemberId;
+  await updateDoc(doc(db, C.BOOKS, bookId), {
+    memberId: newMemberId,
+    originalMemberId,
+    handedOverAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
 // Delete all collection entries belonging to a book (used when reassigning ticket range)
 export async function deleteCollectionsForBook(bookId) {
   const snap = await getDocs(collection(db, C.COLLECTIONS));

@@ -416,6 +416,26 @@ function MemberDetail({ member, onEdit }) {
       {/* Books tab */}
       {tab==="overview"&&(
         <>
+          {stats.handedOverBooks && stats.handedOverBooks.length > 0 && (
+            <div style={{ background:"#e3f2fd", border:"1px solid #90caf9", borderRadius:10, padding:"10px 12px", marginBottom:12 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:"#1565c0", marginBottom:6 }}>
+                <i className="ti ti-arrows-exchange" style={{ marginRight:5 }}/>
+                Books handed to others ({stats.handedOverBooks.length})
+              </div>
+              {stats.handedOverBooks.map(hb=>{
+                const holder = members.find(mm=>mm.id===hb.memberId||mm.memberId===hb.memberId);
+                const hbCols = collections.filter(c=>c.bookId===hb.id);
+                const hbColl = hbCols.reduce((s,c)=>s+(c.amount||0),0);
+                return(
+                  <div key={hb.id} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11,padding:"4px 0",borderBottom:"0.5px solid #cfe3f5" }}>
+                    <span style={{ color:"#1a1a1a" }}>Book {hb.bookNumber} → <strong>{holder?`${holder.firstName} ${holder.lastName}`:"?"}</strong></span>
+                    <span style={{ color:"#1565c0",fontWeight:700 }}>{fmt(hbColl)}</span>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize:9,color:"#888",marginTop:6 }}>These books originally came from this member but are now sold by others. Money counts under whoever holds the book.</div>
+            </div>
+          )}
           <SectionLabel>Assigned books</SectionLabel>
           {stats.memberBooks.length===0
             ? <div style={{ fontSize:12,color:"#aaa",textAlign:"center",padding:"20px 0" }}>No books assigned yet</div>
@@ -437,7 +457,10 @@ function MemberDetail({ member, onEdit }) {
                     <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:6 }}>
                       <div style={{ width:32,height:32,borderRadius:8,background:sr?sr.bg:"#f0f0f0",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:sr?sr.color:"#aaa",fontSize:13,flexShrink:0 }}>{book.bookNumber?.charAt(0)}</div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>Book {book.bookNumber}</div>
+                        <div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>
+                          Book {book.bookNumber}
+                          {(()=>{ const oo = book.originalMemberId && book.originalMemberId!==book.memberId ? (members.find(mm=>mm.id===book.originalMemberId||mm.memberId===book.originalMemberId)) : null; return oo ? <span style={{ marginLeft:6,fontSize:9,fontWeight:600,background:"#e3f2fd",color:"#1565c0",padding:"1px 6px",borderRadius:4 }}>from {oo.firstName}</span> : null; })()}
+                        </div>
                         <div style={{ fontSize:10,color:"#aaa" }}>Tickets {book.ticketFrom}–{book.ticketTo} · Issued {book.issueDate||"—"}</div>
                       </div>
                       <span style={{ fontSize:9,padding:"2px 7px",borderRadius:7,fontWeight:700,background:isComplete?"#e8f5ee":totalSold>0?"#fff3e0":"#ffebee",color:isComplete?GREEN:totalSold>0?"#e65100":"#c62828" }}>

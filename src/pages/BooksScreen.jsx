@@ -887,6 +887,10 @@ export default function BooksScreen({ triggerCollect }) {
             if (!book.memberId) return false;
             return m.id === book.memberId || m.memberId === book.memberId;
           });
+          // Original owner (if book was handed over)
+          const origOwner = book.originalMemberId && book.originalMemberId !== book.memberId
+            ? data.members.find(m => m.id === book.originalMemberId || m.memberId === book.originalMemberId)
+            : null;
           const pct    = Math.round((stats.totalSold/book.ticketCount)*100);
           const s      = getSeriesFromBook(book.bookNumber);
           const barC   = book.status==="complete"?GREEN:book.status==="ongoing"?"#4caf50":"#e53935";
@@ -898,6 +902,7 @@ export default function BooksScreen({ triggerCollect }) {
                   {/* Name first, then book details */}
                   <div style={{ fontSize:13,fontWeight:700,color:"#1a1a1a" }}>
                     {book.isCommon?"Common pool":member?`${member.firstName} ${member.lastName}`:"—"}
+                    {origOwner&&<span style={{ marginLeft:6,fontSize:9,fontWeight:600,background:"#e3f2fd",color:"#1565c0",padding:"1px 6px",borderRadius:4 }}>from {origOwner.firstName}</span>}
                   </div>
                   <div style={{ fontSize:10,color:"#aaa",marginTop:1 }}>
                     Book {book.bookNumber} · Tickets {book.ticketFrom}–{book.ticketTo}
