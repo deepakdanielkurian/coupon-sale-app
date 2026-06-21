@@ -51,7 +51,7 @@ function ReportPreview({ reportId, data }) {
         <div style={{ fontSize:26,fontWeight:700,color:"#fff" }}>{fmt(totalC)}</div>
         <div style={{ fontSize:10,color:"rgba(255,255,255,0.55)",marginTop:2 }}>{sold} of {TOTAL_TICKETS.toLocaleString()} tickets sold</div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10 }}>
-          {[["Books",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending",fmt(totalV-totalC)],["Members with books",members.length]].map(([l,v])=>(
+          {[["Books",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending",fmt(totalV-totalC)]].map(([l,v])=>(
             <div key={l} style={{ background:"rgba(255,255,255,0.15)",borderRadius:7,padding:"6px 8px" }}>
               <div style={{ fontSize:9,color:"rgba(255,255,255,0.55)" }}>{l}</div>
               <div style={{ fontSize:12,fontWeight:700,color:"#fff" }}>{v}</div>
@@ -83,7 +83,11 @@ function ReportPreview({ reportId, data }) {
         );
       })}
       <SectionLabel>Member summary</SectionLabel>
-      {members.map(m=>{
+      {[...members].map(m=>{
+        const mc=collections.filter(c=>c.memberId===m.id||(m.memberId&&c.memberId===m.memberId));
+        const ld=mc.length>0?mc.map(c=>c.date).sort().reverse()[0]:"";
+        return {m,ld};
+      }).sort((a,b)=>{ if(a.ld&&b.ld)return b.ld.localeCompare(a.ld); if(a.ld)return -1; if(b.ld)return 1; return 0; }).map(({m})=>{
         const s=getMemberStats(m.id,books,collections);
         if(s.totalCollected===0&&s.totalPending===0) return null;
         return(
@@ -139,7 +143,11 @@ function ReportPreview({ reportId, data }) {
   if (reportId==="member") return (
     <div>
       <Hdr/>
-      {members.map(m=>{
+      {[...members].map(m=>{
+        const mc=collections.filter(c=>c.memberId===m.id||(m.memberId&&c.memberId===m.memberId));
+        const ld=mc.length>0?mc.map(c=>c.date).sort().reverse()[0]:"";
+        return {m,ld};
+      }).sort((a,b)=>{ if(a.ld&&b.ld)return b.ld.localeCompare(a.ld); if(a.ld)return -1; if(b.ld)return 1; return 0; }).map(({m})=>{
         const s=getMemberStats(m.id,books,collections);
         const cfg=LABELS[m.label]||LABELS.committee_member;
         const mCols=collections.filter(c=>c.memberId===m.id||m.memberId===c.memberId).sort((a,b)=>new Date(b.date)-new Date(a.date));
