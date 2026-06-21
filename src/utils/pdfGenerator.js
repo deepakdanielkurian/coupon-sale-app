@@ -113,22 +113,15 @@ function addSummary(doc, data, startY) {
   y = doc.lastAutoTable.finalY+8;
 
   y = secTitle(doc,"Member collection summary",y);
-  // Sort members by their most recent collection date (latest first), then by name
+  // Sort members by collected amount (highest first)
   const memData = members.map(m=>{
     const s = getMemberStats(m.id,books,collections);
-    const mCols = collections.filter(c=>c.memberId===m.id||(m.memberId&&c.memberId===m.memberId));
-    const lastDate = mCols.length>0 ? mCols.map(c=>c.date).sort().reverse()[0] : "";
-    return { m, s, lastDate };
-  }).sort((a,b)=>{
-    if (a.lastDate && b.lastDate) return b.lastDate.localeCompare(a.lastDate);
-    if (a.lastDate) return -1;
-    if (b.lastDate) return 1;
-    return `${a.m.firstName} ${a.m.lastName}`.localeCompare(`${b.m.firstName} ${b.m.lastName}`);
+    return { m, s };
+  }).sort((a,b)=> b.s.totalCollected - a.s.totalCollected);
+  const memRows = memData.map(({m,s})=>{
+    return [`${m.firstName} ${m.lastName}`,LABELS[m.label]?.label||m.label,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,fmt(s.totalCollected),fmt(s.totalPending),s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
   });
-  const memRows = memData.map(({m,s,lastDate})=>{
-    return [`${m.firstName} ${m.lastName}`,LABELS[m.label]?.label||m.label,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,lastDate||"—",fmt(s.totalPending),s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
-  });
-  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Category","Books","Tickets","Last collected","Pending","Status"]],body:memRows,columnStyles:{4:{textColor:[100,100,100]},5:{textColor:AMBER}}});
+  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Category","Books","Tickets","Collected","Pending","Status"]],body:memRows,columnStyles:{4:{textColor:GREEN},5:{textColor:AMBER}}});
   return doc.lastAutoTable.finalY+10;
 }
 
@@ -162,17 +155,10 @@ function addMemberWise(doc, data, startY) {
   const {books,collections,members} = data;
   const w = pageW(doc); let y = startY;
 
-  // Sort members by their most recent collection date (latest first)
-  const sortedMembers = [...members].map(m=>{
-    const mc = collections.filter(c => c.memberId===m.id || (m.memberId && c.memberId===m.memberId));
-    const ld = mc.length>0 ? mc.map(c=>c.date).sort().reverse()[0] : "";
-    return { m, ld };
-  }).sort((a,b)=>{
-    if (a.ld && b.ld) return b.ld.localeCompare(a.ld);
-    if (a.ld) return -1;
-    if (b.ld) return 1;
-    return 0;
-  }).map(x=>x.m);
+  // Sort members by collected amount (highest first)
+  const sortedMembers = [...members].map(m=>({
+    m, collected: getMemberStats(m.id,books,collections).totalCollected
+  })).sort((a,b)=> b.collected - a.collected).map(x=>x.m);
 
   sortedMembers.forEach(member=>{
     const stats = getMemberStats(member.id,books,collections);
