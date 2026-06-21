@@ -170,7 +170,7 @@ function ReportPreview({ reportId, data }) {
 
   // ── PENDING ───────────────────────────────────────────────
   if (reportId==="pending") {
-    const pm=members.map(m=>({...m,...getMemberStats(m.id,books,collections)})).filter(m=>m.totalPending>0).sort((a,b)=>b.totalPending-a.totalPending);
+    const pm=members.map(m=>({...m,...getMemberStats(m.id,books,collections)})).filter(m=>m.totalPending>0).sort((a,b)=>b.totalCollected-a.totalCollected);
     return(
       <div>
         <Hdr/>

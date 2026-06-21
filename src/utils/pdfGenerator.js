@@ -123,9 +123,9 @@ function addSummary(doc, data, startY) {
     return { m, s };
   }).sort((a,b)=> b.s.totalCollected - a.s.totalCollected);
   const memRows = memData.map(({m,s})=>{
-    return [`${m.firstName} ${m.lastName}`,LABELS[m.label]?.label||m.label,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,fmt(s.totalCollected),fmt(s.totalPending),s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
+    return [`${m.firstName} ${m.lastName}`,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,fmt(s.totalCollected),fmt(s.totalPending),s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
   });
-  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Category","Books","Tickets","Collected","Pending","Status"]],body:memRows,columnStyles:{4:{textColor:GREEN},5:{textColor:AMBER}}});
+  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Books","Tickets","Collected","Pending","Status"]],body:memRows,columnStyles:{3:{textColor:GREEN},4:{textColor:AMBER}}});
   return doc.lastAutoTable.finalY+10;
 }
 
@@ -220,7 +220,7 @@ function addPending(doc, data, startY) {
   const {books,collections,members} = data;
   const w = pageW(doc); let y = startY;
 
-  const pm = members.map(m=>({...m,...getMemberStats(m.id,books,collections)})).filter(m=>m.totalPending>0).sort((a,b)=>b.totalPending-a.totalPending);
+  const pm = members.map(m=>({...m,...getMemberStats(m.id,books,collections)})).filter(m=>m.totalPending>0).sort((a,b)=>b.totalCollected-a.totalCollected);
   const totalPending = pm.reduce((s,m)=>s+m.totalPending,0);
 
   doc.setFillColor(250,238,218); doc.roundedRect(14,y,w-28,12,2,2,"F");
