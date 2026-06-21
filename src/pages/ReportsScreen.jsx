@@ -13,8 +13,10 @@ const GREEN = "#1a6b3c";
 function ReportPreview({ reportId, data }) {
   const { books, collections, members, remittances=[] } = data;
   const totalC  = collections.reduce((s,c)=>s+(c.amount||0),0);
-  const totalV  = TOTAL_TICKETS * TICKET_PRICE;
   const sold    = collections.reduce((s,c)=>s+(c.ticketsSold||0),0);
+  // Pending is based on ISSUED books only, not the full 10,000 tickets
+  const issuedTickets = books.reduce((s,b)=>s+((b.ticketCount||0)-(b.returnedTickets||0)),0);
+  const totalV  = issuedTickets * TICKET_PRICE;
 
   const Hdr = () => (
     <div style={{ background:GREEN, borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
@@ -49,7 +51,7 @@ function ReportPreview({ reportId, data }) {
       <div style={{ background:GREEN,borderRadius:10,padding:"12px 14px",marginBottom:10 }}>
         <div style={{ fontSize:10,color:"rgba(255,255,255,0.6)" }}>Total collected</div>
         <div style={{ fontSize:26,fontWeight:700,color:"#fff" }}>{fmt(totalC)}</div>
-        <div style={{ fontSize:10,color:"rgba(255,255,255,0.55)",marginTop:2 }}>{sold} of {TOTAL_TICKETS.toLocaleString()} tickets sold</div>
+        <div style={{ fontSize:10,color:"rgba(255,255,255,0.55)",marginTop:2 }}>{sold} of {issuedTickets.toLocaleString()} issued tickets sold</div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10 }}>
           {[["Books",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending",fmt(totalV-totalC)]].map(([l,v])=>(
             <div key={l} style={{ background:"rgba(255,255,255,0.15)",borderRadius:7,padding:"6px 8px" }}>
@@ -104,7 +106,7 @@ function ReportPreview({ reportId, data }) {
     <div>
       <Hdr/>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8 }}>
-        {[["Books",books.length],["Tickets sold",`${sold}/${TOTAL_TICKETS}`],["Collected",fmt(totalC)],["Pending",fmt(totalV-totalC)]].map(([l,v],i)=>(
+        {[["Books",books.length],["Tickets sold",`${sold}/${issuedTickets}`],["Collected",fmt(totalC)],["Pending",fmt(totalV-totalC)]].map(([l,v],i)=>(
           <div key={i} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"8px 10px" }}>
             <div style={{ fontSize:10,color:"#888" }}>{l}</div>
             <div style={{ fontSize:14,fontWeight:700,color:i===2?GREEN:i===3?"#e65100":"#1a1a1a" }}>{v}</div>

@@ -77,9 +77,13 @@ function addSummary(doc, data, startY) {
   let y = startY;
 
   const totalC  = collections.reduce((s,c)=>s+(c.amount||0),0);
-  const totalV  = TOTAL_TICKETS*TICKET_PRICE;
   const sold    = collections.reduce((s,c)=>s+(c.ticketsSold||0),0);
   const complete= books.filter(b=>b.status==="complete").length;
+
+  // Value of ISSUED books only (effective tickets = ticketCount - returned)
+  const issuedTickets = books.reduce((s,b)=>s+((b.ticketCount||0)-(b.returnedTickets||0)),0);
+  const issuedValue   = issuedTickets * TICKET_PRICE;
+  const pendingIssued = Math.max(0, issuedValue - totalC);
 
   // Grand box
   doc.setFillColor(...RED); doc.roundedRect(14,y,w-28,22,3,3,"F");
@@ -88,13 +92,13 @@ function addSummary(doc, data, startY) {
   doc.setFontSize(17); doc.setFont("helvetica","bold");
   doc.text(fmt(totalC),20,y+18);
   doc.setFontSize(8); doc.setFont("helvetica","normal");
-  doc.text(`${sold.toLocaleString()} of ${TOTAL_TICKETS.toLocaleString()} tickets sold`,w-20,y+18,{align:"right"});
+  doc.text(`${sold.toLocaleString()} of ${issuedTickets.toLocaleString()} issued tickets sold`,w-20,y+18,{align:"right"});
   y+=28;
 
   const bw=(w-28-6)/3;
   statBox(doc,14,y,bw,"Books issued",books.length);
   statBox(doc,14+bw+3,y,bw,"Books complete",complete,GREEN);
-  statBox(doc,14+(bw+3)*2,y,bw,"Balance pending",fmt(totalV-totalC),AMBER);
+  statBox(doc,14+(bw+3)*2,y,bw,"Balance pending",fmt(pendingIssued),AMBER);
   y+=26;
 
   y = secTitle(doc,"Series-wise breakdown",y);
