@@ -104,16 +104,19 @@ function ReportPreview({ reportId, data }) {
         const mk=m=>`${m.firstName} ${m.lastName}`.trim().toLowerCase();
         const used=new Set();
 
-        const memData=members.map(m=>{
+        const allMem=members.map(m=>{
           const s=getMemberStats(m.id,books,collections);
           const common=commonAgg[mk(m)]||null;
           if(common) used.add(mk(m));
           return {m,s,common,sortAmt:s.totalCollected+(common?common.amount:0)};
-        }).filter(({s,common})=>s.memberBooks.length>0||s.totalCollected>0||common)
-          .sort((a,b)=>b.sortAmt-a.sortAmt);
+        });
+        // Collectors first (collected money), sorted by amount
+        const collectors=allMem.filter(({s,common})=>s.totalCollected>0||common).sort((a,b)=>b.sortAmt-a.sortAmt);
+        // Zero-collection members (have books, collected nothing) — shown last
+        const zeroColl=allMem.filter(({s,common})=>s.totalCollected===0&&!common&&s.memberBooks.length>0).sort((a,b)=>`${a.m.firstName} ${a.m.lastName}`.localeCompare(`${b.m.firstName} ${b.m.lastName}`));
 
         const rows=[];
-        memData.forEach(({m,s,common})=>{
+        collectors.forEach(({m,s,common})=>{
           rows.push(
             <div key={m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
               <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
@@ -138,6 +141,17 @@ function ReportPreview({ reportId, data }) {
               <div style={{ width:28,height:28,borderRadius:"50%",background:"#4a148c",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff",flexShrink:0 }}>C</div>
               <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{cb.displayName}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>Common book ({cb.bookNo}) · {cb.tickets} tickets</div></div>
               <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(cb.amount)}</div>
+            </div>
+          );
+        });
+
+        // Zero-collection members last
+        zeroColl.forEach(({m,s})=>{
+          rows.push(
+            <div key={"z-"+m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8,opacity:0.75 }}>
+              <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
+              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books · Not started</div></div>
+              <div style={{ textAlign:"right" }}><div style={{ fontSize:11,fontWeight:700,color:"#aaa" }}>Rs.0</div>{s.totalPending>0&&<div style={{ fontSize:9,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
             </div>
           );
         });

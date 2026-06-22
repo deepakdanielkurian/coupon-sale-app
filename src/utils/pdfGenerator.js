@@ -147,38 +147,49 @@ function addSummary(doc, data, startY) {
   function memberKey(m){ return `${m.firstName} ${m.lastName}`.trim().toLowerCase(); }
   const usedCommonKeys = new Set();
 
-  // ── Member rows (sorted by collected, highest first) ──
-  const memData = members.map(m=>{
+  // ── Build all member data with their matched common tickets ──
+  const allMemData = members.map(m=>{
     const s = getMemberStats(m.id,books,collections);
     const mk = memberKey(m);
-    const common = commonAgg[mk] || null;          // common tickets matched to this member
+    const common = commonAgg[mk] || null;
     if (common) usedCommonKeys.add(mk);
-    const sortAmount = s.totalCollected + (common?common.amount:0);
-    return { m, s, common, sortAmount };
-  })
-  // Hide members with no books, no collections, and no matched common tickets
-  .filter(({s,common}) => s.memberBooks.length>0 || s.totalCollected>0 || common)
-  .sort((a,b)=> b.sortAmount - a.sortAmount);
+    const totalWithCommon = s.totalCollected + (common?common.amount:0);
+    return { m, s, common, totalWithCommon };
+  });
 
-  // Build table rows: each member row, with a common sub-row right below if matched
+  // GROUP 1: Collectors — anyone who collected money (own books or common). Sorted by amount desc.
+  const collectors = allMemData
+    .filter(({s,common}) => s.totalCollected>0 || common)
+    .sort((a,b)=> b.totalWithCommon - a.totalWithCommon);
+
+  // GROUP 3: Zero-collection members — have books but collected nothing. Sorted by name.
+  const zeroCollectors = allMemData
+    .filter(({s,common}) => s.totalCollected===0 && !common && s.memberBooks.length>0)
+    .sort((a,b)=> `${a.m.firstName} ${a.m.lastName}`.localeCompare(`${b.m.firstName} ${b.m.lastName}`));
+
   const memRows = [];
-  const subRowIdx = []; // indices that are common sub-rows (for styling)
-  memData.forEach(({m,s,common})=>{
+
+  // 1. Collectors first (with their common sub-row right below)
+  collectors.forEach(({m,s,common})=>{
     const status = s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started";
     memRows.push([`${m.firstName} ${m.lastName}`, s.memberBooks.length, `${s.soldTickets}/${s.totalTickets}`, fmt(s.totalCollected), fmt(s.totalPending), status]);
     if (common) {
       memRows.push([`»  ${m.firstName} ${m.lastName}`, `Common book (${common.bookNo})`, `${common.tickets}/${common.tickets}`, fmt(common.amount), fmt(0), "Complete"]);
-      subRowIdx.push(memRows.length-1);
     }
   });
 
-  // ── Common-only buyers (not matching any member) — own rows, sorted by amount ──
+  // 2. Common-only buyers (no member match) — after the collecting members
   const commonOnly = Object.entries(commonAgg)
     .filter(([key]) => !usedCommonKeys.has(key))
     .map(([,v]) => v)
     .sort((a,b)=> b.amount - a.amount);
   commonOnly.forEach(cb=>{
     memRows.push([cb.displayName, `Common book (${cb.bookNo})`, `${cb.tickets}/${cb.tickets}`, fmt(cb.amount), fmt(0), "Complete"]);
+  });
+
+  // 3. Zero-collection members last (have books, collected nothing)
+  zeroCollectors.forEach(({m,s})=>{
+    memRows.push([`${m.firstName} ${m.lastName}`, s.memberBooks.length, `${s.soldTickets}/${s.totalTickets}`, fmt(s.totalCollected), fmt(s.totalPending), "Not started"]);
   });
 
   autoTable(doc,{
