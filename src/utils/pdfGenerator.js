@@ -98,8 +98,16 @@ function addSummary(doc, data, startY) {
   const bw=(w-28-6)/3;
   statBox(doc,14,y,bw,"Books issued",books.length);
   statBox(doc,14+bw+3,y,bw,"Books complete",complete,GREEN);
-  statBox(doc,14+(bw+3)*2,y,bw,"Balance pending",fmt(pendingIssued),AMBER);
-  y+=26;
+  statBox(doc,14+(bw+3)*2,y,bw,"Pending to collect",fmt(pendingIssued),AMBER);
+  y+=20;
+
+  // Explanatory line for the pending figure — avoids confusion
+  doc.setTextColor(...MUTED); doc.setFontSize(7); doc.setFont("helvetica","normal");
+  doc.text(
+    `Pending = value of issued books (${issuedTickets.toLocaleString()} tickets x Rs.1,000 = ${fmt(issuedValue)}) minus collected (${fmt(totalC)}). Only counts books already issued, not the full draw.`,
+    14, y+3, { maxWidth: w-28 }
+  );
+  y+=10;
 
   y = secTitle(doc,"Series-wise breakdown",y);
   const serRows = Object.entries(BOOK_SERIES).map(([key,s])=>{
@@ -178,10 +186,11 @@ function addSummary(doc, data, startY) {
     head:[["Member","Books","Tickets","Collected","Pending","Status"]],
     body:memRows,
     columnStyles:{3:{textColor:GREEN},4:{textColor:AMBER}},
-    // Style common sub-rows (indented members) a touch lighter
+    // Style common-book rows with a distinct purple tint
     didParseCell: (hookData) => {
       if (hookData.section==="body" && hookData.row.raw[1] && String(hookData.row.raw[1]).startsWith("Common book")) {
-        hookData.cell.styles.textColor = [110,110,110];
+        hookData.cell.styles.fillColor = [243,229,245];   // light purple bg
+        hookData.cell.styles.textColor = [74,20,140];      // purple text
       }
     },
   });

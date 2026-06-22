@@ -53,13 +53,16 @@ function ReportPreview({ reportId, data }) {
         <div style={{ fontSize:26,fontWeight:700,color:"#fff" }}>{fmt(totalC)}</div>
         <div style={{ fontSize:10,color:"rgba(255,255,255,0.55)",marginTop:2 }}>{sold} of {issuedTickets.toLocaleString()} issued tickets sold</div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10 }}>
-          {[["Books",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending",fmt(totalV-totalC)]].map(([l,v])=>(
+          {[["Books issued",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending to collect",fmt(totalV-totalC)]].map(([l,v])=>(
             <div key={l} style={{ background:"rgba(255,255,255,0.15)",borderRadius:7,padding:"6px 8px" }}>
               <div style={{ fontSize:9,color:"rgba(255,255,255,0.55)" }}>{l}</div>
               <div style={{ fontSize:12,fontWeight:700,color:"#fff" }}>{v}</div>
             </div>
           ))}
         </div>
+      </div>
+      <div style={{ background:"#fff8e1",border:"1px solid #ffe082",borderRadius:8,padding:"8px 10px",marginBottom:10,fontSize:10,color:"#e65100",lineHeight:1.5 }}>
+        <strong>Pending to collect</strong> = value of issued books ({issuedTickets.toLocaleString()} tickets × Rs.1,000 = {fmt(totalV)}) − collected ({fmt(totalC)}). Counts only books already issued, not the full draw.
       </div>
       <SectionLabel>Series breakdown</SectionLabel>
       {Object.entries(BOOK_SERIES).map(([key,s])=>{
@@ -120,9 +123,9 @@ function ReportPreview({ reportId, data }) {
           );
           if(common){
             rows.push(
-              <div key={m.id+"-c"} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0f0f0",padding:"6px 10px 6px 22px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-                <div style={{ flex:1 }}><div style={{ fontSize:10,fontWeight:600,color:"#666" }}>» {m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#aaa" }}>Common book ({common.bookNo}) · {common.tickets} tickets</div></div>
-                <div style={{ fontSize:11,fontWeight:700,color:"#666" }}>{fmt(common.amount)}</div>
+              <div key={m.id+"-c"} style={{ background:"#f3e5f5",borderRadius:8,border:"1px solid #e1bee7",padding:"6px 10px 6px 22px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+                <div style={{ flex:1 }}><div style={{ fontSize:10,fontWeight:600,color:"#4a148c" }}>» {m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>Common book ({common.bookNo}) · {common.tickets} tickets</div></div>
+                <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(common.amount)}</div>
               </div>
             );
           }
@@ -131,10 +134,10 @@ function ReportPreview({ reportId, data }) {
         // Common-only buyers
         Object.entries(commonAgg).filter(([k])=>!used.has(k)).map(([,v])=>v).sort((a,b)=>b.amount-a.amount).forEach(cb=>{
           rows.push(
-            <div key={"co-"+cb.displayName} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0f0f0",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-              <div style={{ width:28,height:28,borderRadius:"50%",background:"#f3e5f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#4a148c",flexShrink:0 }}>C</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{cb.displayName}</div><div style={{ fontSize:9,color:"#888" }}>Common book ({cb.bookNo}) · {cb.tickets} tickets</div></div>
-              <div style={{ fontSize:11,fontWeight:700,color:GREEN }}>{fmt(cb.amount)}</div>
+            <div key={"co-"+cb.displayName} style={{ background:"#f3e5f5",borderRadius:8,border:"1px solid #e1bee7",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+              <div style={{ width:28,height:28,borderRadius:"50%",background:"#4a148c",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff",flexShrink:0 }}>C</div>
+              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{cb.displayName}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>Common book ({cb.bookNo}) · {cb.tickets} tickets</div></div>
+              <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(cb.amount)}</div>
             </div>
           );
         });
