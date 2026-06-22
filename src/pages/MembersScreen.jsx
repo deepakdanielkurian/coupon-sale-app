@@ -300,8 +300,17 @@ function MemberForm({ onSave, onCancel, existing }) {
 }
 
 // ── Member detail ─────────────────────────────────────────────
-function MemberDetail({ member, onEdit }) {
-  const { data, addCollection, stopSelling, resetBook } = useApp();
+function MemberDetail({ member, onEdit, onDeleted }) {
+  const { data, addCollection, stopSelling, resetBook, deleteMember, can } = useApp();
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  const memberBookCount = data.books.filter(b => b.id===member.id || b.memberId===member.id || b.memberId===member.memberId).length;
+
+  async function handleDelete() {
+    if (!confirmDel) { setConfirmDel(true); return; }
+    await deleteMember(member.id);
+    if (onDeleted) onDeleted();
+  }
   const { books, collections } = data;
 
   // Always use live collections from context
@@ -341,10 +350,30 @@ function MemberDetail({ member, onEdit }) {
             <div style={{ fontSize:15,fontWeight:700,color:"#1a1a1a" }}>{member.firstName} {member.lastName}</div>
             <div style={{ display:"flex",alignItems:"center",gap:6,marginTop:3 }}><Badge type={member.label}/><span style={{ fontSize:10,color:"#888" }}>{member.memberId||member.id}</span></div>
           </div>
-          <button onClick={onEdit} style={{ background:"#fff",border:`1px solid ${GREEN}`,color:GREEN,borderRadius:7,padding:"5px 10px",fontSize:11,fontWeight:600,cursor:"pointer" }}>
-            <i className="ti ti-edit"/> Edit
-          </button>
+          <div style={{ display:"flex",flexDirection:"column",gap:5 }}>
+            <button onClick={onEdit} style={{ background:"#fff",border:`1px solid ${GREEN}`,color:GREEN,borderRadius:7,padding:"5px 10px",fontSize:11,fontWeight:600,cursor:"pointer" }}>
+              <i className="ti ti-edit"/> Edit
+            </button>
+            {can.deleteMember() && (
+              <button onClick={handleDelete} style={{ background:confirmDel?"#c62828":"#fff",border:"1px solid #fca5a5",color:confirmDel?"#fff":"#c62828",borderRadius:7,padding:"5px 10px",fontSize:11,fontWeight:600,cursor:"pointer" }}>
+                <i className="ti ti-trash"/> {confirmDel?"Confirm?":"Delete"}
+              </button>
+            )}
+          </div>
         </div>
+        {confirmDel && (
+          <div style={{ background:"#fff8e1",border:"1px solid #ffe082",borderRadius:8,padding:"9px 11px",margin:"0 0 10px",display:"flex",gap:7 }}>
+            <i className="ti ti-alert-triangle" style={{ color:"#e65100",fontSize:15,flexShrink:0 }}/>
+            <div style={{ fontSize:11,color:"#e65100",lineHeight:1.5 }}>
+              {memberBookCount>0
+                ? <>This member has <strong>{memberBookCount} book(s)</strong> assigned. Deleting won't remove those books — reassign or unassign them first. Tap Confirm to delete the member anyway.</>
+                : <>Delete <strong>{member.firstName} {member.lastName}</strong> permanently? Tap Confirm to proceed.</>}
+              <div style={{ marginTop:5 }}>
+                <button onClick={()=>setConfirmDel(false)} style={{ background:"#fff",border:"1px solid #e0e0e0",color:"#888",borderRadius:6,padding:"3px 10px",fontSize:10,cursor:"pointer" }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
         {[
           member.phone&&    {icon:"ti-phone",          val:member.phone},
           member.whatsapp&& {icon:"ti-brand-whatsapp", val:member.whatsapp},
@@ -654,7 +683,7 @@ export default function MembersScreen() {
     return(
       <div style={{ display:"flex",flexDirection:"column",flex:1,overflow:"hidden" }}>
         <Header title={`${live.firstName} ${live.lastName}`} sub="Member profile" onBack={()=>setView("list")}/>
-        <MemberDetail member={live} onEdit={()=>setView("edit")}/>
+        <MemberDetail member={live} onEdit={()=>setView("edit")} onDeleted={()=>setView("list")}/>
       </div>
     );
   }

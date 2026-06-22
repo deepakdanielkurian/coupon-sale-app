@@ -120,8 +120,19 @@ function addSummary(doc, data, startY) {
   // Sort members by collected amount (highest first)
   const memData = members.map(m=>{
     const s = getMemberStats(m.id,books,collections);
-    return { m, s };
-  }).sort((a,b)=> b.s.totalCollected - a.s.totalCollected);
+    // Common-ticket money bought under this member's name (by buyer name match)
+    const fullName = `${m.firstName} ${m.lastName}`.trim().toLowerCase();
+    let commonByName = 0;
+    collections.forEach(c=>{
+      (c.ticketEntries||[]).forEach(e=>{
+        if ((e.buyerName||"").trim().toLowerCase() === fullName) commonByName += (e.amount||1000);
+      });
+    });
+    return { m, s, commonByName };
+  })
+  // Hide members with no books, no direct collections, and no common purchases
+  .filter(({m,s,commonByName}) => s.memberBooks.length>0 || s.totalCollected>0 || commonByName>0)
+  .sort((a,b)=> (b.s.totalCollected+b.commonByName) - (a.s.totalCollected+a.commonByName));
   const memRows = memData.map(({m,s})=>{
     return [`${m.firstName} ${m.lastName}`,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,fmt(s.totalCollected),fmt(s.totalPending),s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
   });
