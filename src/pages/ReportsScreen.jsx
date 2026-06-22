@@ -85,18 +85,61 @@ function ReportPreview({ reportId, data }) {
         );
       })}
       <SectionLabel>Member summary</SectionLabel>
-      {[...members].map(m=>({m,c:getMemberStats(m.id,books,collections).totalCollected}))
-        .sort((a,b)=>b.c-a.c).map(({m})=>{
-        const s=getMemberStats(m.id,books,collections);
-        if(s.totalCollected===0&&s.totalPending===0) return null;
-        return(
-          <div key={m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-            <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
-            <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books</div></div>
-            <div style={{ textAlign:"right" }}><div style={{ fontSize:11,fontWeight:700,color:GREEN }}>{fmt(s.totalCollected)}</div>{s.totalPending>0&&<div style={{ fontSize:9,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
-          </div>
-        );
-      })}
+      {(()=>{
+        // Aggregate common-ticket buyers
+        const commonAgg = {};
+        collections.forEach(c=>{
+          const bk = books.find(b=>b.id===c.bookId);
+          if (!(c.isCommon||bk?.isCommon) || !c.ticketEntries) return;
+          c.ticketEntries.forEach(e=>{
+            const raw=(e.buyerName||"").trim(); if(!raw) return;
+            const k=raw.toLowerCase();
+            if(!commonAgg[k]) commonAgg[k]={displayName:raw,tickets:0,amount:0,bookNo:bk?.bookNumber||"C"};
+            commonAgg[k].tickets+=1; commonAgg[k].amount+=(e.amount||1000);
+          });
+        });
+        const mk=m=>`${m.firstName} ${m.lastName}`.trim().toLowerCase();
+        const used=new Set();
+
+        const memData=members.map(m=>{
+          const s=getMemberStats(m.id,books,collections);
+          const common=commonAgg[mk(m)]||null;
+          if(common) used.add(mk(m));
+          return {m,s,common,sortAmt:s.totalCollected+(common?common.amount:0)};
+        }).filter(({s,common})=>s.memberBooks.length>0||s.totalCollected>0||common)
+          .sort((a,b)=>b.sortAmt-a.sortAmt);
+
+        const rows=[];
+        memData.forEach(({m,s,common})=>{
+          rows.push(
+            <div key={m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+              <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
+              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books</div></div>
+              <div style={{ textAlign:"right" }}><div style={{ fontSize:11,fontWeight:700,color:GREEN }}>{fmt(s.totalCollected)}</div>{s.totalPending>0&&<div style={{ fontSize:9,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
+            </div>
+          );
+          if(common){
+            rows.push(
+              <div key={m.id+"-c"} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0f0f0",padding:"6px 10px 6px 22px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+                <div style={{ flex:1 }}><div style={{ fontSize:10,fontWeight:600,color:"#666" }}>» {m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#aaa" }}>Common book ({common.bookNo}) · {common.tickets} tickets</div></div>
+                <div style={{ fontSize:11,fontWeight:700,color:"#666" }}>{fmt(common.amount)}</div>
+              </div>
+            );
+          }
+        });
+
+        // Common-only buyers
+        Object.entries(commonAgg).filter(([k])=>!used.has(k)).map(([,v])=>v).sort((a,b)=>b.amount-a.amount).forEach(cb=>{
+          rows.push(
+            <div key={"co-"+cb.displayName} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0f0f0",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+              <div style={{ width:28,height:28,borderRadius:"50%",background:"#f3e5f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#4a148c",flexShrink:0 }}>C</div>
+              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{cb.displayName}</div><div style={{ fontSize:9,color:"#888" }}>Common book ({cb.bookNo}) · {cb.tickets} tickets</div></div>
+              <div style={{ fontSize:11,fontWeight:700,color:GREEN }}>{fmt(cb.amount)}</div>
+            </div>
+          );
+        });
+        return rows;
+      })()}
       <TotalBar label="Grand total collected" value={fmt(totalC)}/>
     </div>
   );

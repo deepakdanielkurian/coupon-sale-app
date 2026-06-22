@@ -117,26 +117,74 @@ function addSummary(doc, data, startY) {
   y = doc.lastAutoTable.finalY+8;
 
   y = secTitle(doc,"Member collection summary",y);
-  // Sort members by collected amount (highest first)
+
+  // ── Build common-ticket buyer aggregates from ticketEntries ──
+  // { normalizedName: { displayName, tickets, amount, bookNumbers:Set } }
+  const commonAgg = {};
+  collections.forEach(c=>{
+    const book = books.find(b=>b.id===c.bookId);
+    const isCommon = c.isCommon || book?.isCommon;
+    if (!isCommon || !c.ticketEntries) return;
+    c.ticketEntries.forEach(e=>{
+      const raw = (e.buyerName||"").trim();
+      if (!raw) return;
+      const key = raw.toLowerCase();
+      if (!commonAgg[key]) commonAgg[key] = { displayName: raw, tickets:0, amount:0, bookNo: book?.bookNumber||"C" };
+      commonAgg[key].tickets += 1;
+      commonAgg[key].amount  += (e.amount||1000);
+    });
+  });
+
+  // Match common buyers to members by name (first+last, case-insensitive, trimmed)
+  function memberKey(m){ return `${m.firstName} ${m.lastName}`.trim().toLowerCase(); }
+  const usedCommonKeys = new Set();
+
+  // ── Member rows (sorted by collected, highest first) ──
   const memData = members.map(m=>{
     const s = getMemberStats(m.id,books,collections);
-    // Common-ticket money bought under this member's name (by buyer name match)
-    const fullName = `${m.firstName} ${m.lastName}`.trim().toLowerCase();
-    let commonByName = 0;
-    collections.forEach(c=>{
-      (c.ticketEntries||[]).forEach(e=>{
-        if ((e.buyerName||"").trim().toLowerCase() === fullName) commonByName += (e.amount||1000);
-      });
-    });
-    return { m, s, commonByName };
+    const mk = memberKey(m);
+    const common = commonAgg[mk] || null;          // common tickets matched to this member
+    if (common) usedCommonKeys.add(mk);
+    const sortAmount = s.totalCollected + (common?common.amount:0);
+    return { m, s, common, sortAmount };
   })
-  // Hide members with no books, no direct collections, and no common purchases
-  .filter(({m,s,commonByName}) => s.memberBooks.length>0 || s.totalCollected>0 || commonByName>0)
-  .sort((a,b)=> (b.s.totalCollected+b.commonByName) - (a.s.totalCollected+a.commonByName));
-  const memRows = memData.map(({m,s})=>{
-    return [`${m.firstName} ${m.lastName}`,s.memberBooks.length,`${s.soldTickets}/${s.totalTickets}`,fmt(s.totalCollected),fmt(s.totalPending),s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started"];
+  // Hide members with no books, no collections, and no matched common tickets
+  .filter(({s,common}) => s.memberBooks.length>0 || s.totalCollected>0 || common)
+  .sort((a,b)=> b.sortAmount - a.sortAmount);
+
+  // Build table rows: each member row, with a common sub-row right below if matched
+  const memRows = [];
+  const subRowIdx = []; // indices that are common sub-rows (for styling)
+  memData.forEach(({m,s,common})=>{
+    const status = s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started";
+    memRows.push([`${m.firstName} ${m.lastName}`, s.memberBooks.length, `${s.soldTickets}/${s.totalTickets}`, fmt(s.totalCollected), fmt(s.totalPending), status]);
+    if (common) {
+      memRows.push([`»  ${m.firstName} ${m.lastName}`, `Common book (${common.bookNo})`, `${common.tickets}/${common.tickets}`, fmt(common.amount), fmt(0), "Complete"]);
+      subRowIdx.push(memRows.length-1);
+    }
   });
-  autoTable(doc,{startY:y,...TABLE_STYLES,head:[["Member","Books","Tickets","Collected","Pending","Status"]],body:memRows,columnStyles:{3:{textColor:GREEN},4:{textColor:AMBER}}});
+
+  // ── Common-only buyers (not matching any member) — own rows, sorted by amount ──
+  const commonOnly = Object.entries(commonAgg)
+    .filter(([key]) => !usedCommonKeys.has(key))
+    .map(([,v]) => v)
+    .sort((a,b)=> b.amount - a.amount);
+  commonOnly.forEach(cb=>{
+    memRows.push([cb.displayName, `Common book (${cb.bookNo})`, `${cb.tickets}/${cb.tickets}`, fmt(cb.amount), fmt(0), "Complete"]);
+  });
+
+  autoTable(doc,{
+    startY:y, ...TABLE_STYLES,
+    head:[["Member","Books","Tickets","Collected","Pending","Status"]],
+    body:memRows,
+    columnStyles:{3:{textColor:GREEN},4:{textColor:AMBER}},
+    // Style common sub-rows (indented members) a touch lighter
+    didParseCell: (hookData) => {
+      if (hookData.section==="body" && hookData.row.raw[1] && String(hookData.row.raw[1]).startsWith("Common book")) {
+        hookData.cell.styles.textColor = [110,110,110];
+      }
+    },
+  });
   return doc.lastAutoTable.finalY+10;
 }
 
