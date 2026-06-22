@@ -53,16 +53,13 @@ function ReportPreview({ reportId, data }) {
         <div style={{ fontSize:26,fontWeight:700,color:"#fff" }}>{fmt(totalC)}</div>
         <div style={{ fontSize:10,color:"rgba(255,255,255,0.55)",marginTop:2 }}>{sold} of {issuedTickets.toLocaleString()} issued tickets sold</div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10 }}>
-          {[["Books issued",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending to collect",fmt(totalV-totalC)]].map(([l,v])=>(
+          {[["Books issued",books.length],["Complete",books.filter(b=>b.status==="complete").length],["Pending to collect *",fmt(totalV-totalC)]].map(([l,v])=>(
             <div key={l} style={{ background:"rgba(255,255,255,0.15)",borderRadius:7,padding:"6px 8px" }}>
               <div style={{ fontSize:9,color:"rgba(255,255,255,0.55)" }}>{l}</div>
               <div style={{ fontSize:12,fontWeight:700,color:"#fff" }}>{v}</div>
             </div>
           ))}
         </div>
-      </div>
-      <div style={{ background:"#fff8e1",border:"1px solid #ffe082",borderRadius:8,padding:"8px 10px",marginBottom:10,fontSize:10,color:"#e65100",lineHeight:1.5 }}>
-        <strong>Pending to collect</strong> = value of issued books ({issuedTickets.toLocaleString()} tickets × Rs.1,000 = {fmt(totalV)}) − collected ({fmt(totalC)}). Counts only books already issued, not the full draw.
       </div>
       <SectionLabel>Series breakdown</SectionLabel>
       {Object.entries(BOOK_SERIES).map(([key,s])=>{
@@ -158,6 +155,9 @@ function ReportPreview({ reportId, data }) {
         return rows;
       })()}
       <TotalBar label="Grand total collected" value={fmt(totalC)}/>
+      <div style={{ marginTop:8,fontSize:9,color:"#888",lineHeight:1.5,fontStyle:"italic" }}>
+        * Pending to collect = value of issued books ({issuedTickets.toLocaleString()} tickets × Rs.1,000 = {fmt(totalV)}) − collected ({fmt(totalC)}). Only counts books already issued, not the full draw.
+      </div>
     </div>
   );
 
@@ -465,7 +465,10 @@ export default function ReportsScreen() {
     setGen(true);
     try {
       const doc = generateCombinedPDF(ids, data);
-      downloadPDF(doc, `NBC_Reports_${ids.join("_")}`);
+      // Build a readable name from the selected report titles
+      const names = ids.map(id => (REPORT_DEFS.find(r=>r.id===id)?.title || id).replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_|_$/g,""));
+      const namePart = ids.length === 1 ? names[0] : `NBC_Reports_${ids.length}`;
+      downloadPDF(doc, namePart);
       showToast(`${ids.length} report${ids.length>1?"s":""} downloaded as 1 PDF`);
     } catch(e) {
       console.error("PDF error:", e);

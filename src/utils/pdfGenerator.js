@@ -98,16 +98,8 @@ function addSummary(doc, data, startY) {
   const bw=(w-28-6)/3;
   statBox(doc,14,y,bw,"Books issued",books.length);
   statBox(doc,14+bw+3,y,bw,"Books complete",complete,GREEN);
-  statBox(doc,14+(bw+3)*2,y,bw,"Pending to collect",fmt(pendingIssued),AMBER);
-  y+=20;
-
-  // Explanatory line for the pending figure — avoids confusion
-  doc.setTextColor(...MUTED); doc.setFontSize(7); doc.setFont("helvetica","normal");
-  doc.text(
-    `Pending = value of issued books (${issuedTickets.toLocaleString()} tickets x Rs.1,000 = ${fmt(issuedValue)}) minus collected (${fmt(totalC)}). Only counts books already issued, not the full draw.`,
-    14, y+3, { maxWidth: w-28 }
-  );
-  y+=10;
+  statBox(doc,14+(bw+3)*2,y,bw,"Pending to collect *",fmt(pendingIssued),AMBER);
+  y+=26;
 
   y = secTitle(doc,"Series-wise breakdown",y);
   const serRows = Object.entries(BOOK_SERIES).map(([key,s])=>{
@@ -205,7 +197,14 @@ function addSummary(doc, data, startY) {
       }
     },
   });
-  return doc.lastAutoTable.finalY+10;
+  let yEnd = doc.lastAutoTable.finalY + 8;
+  // Footnote explaining the "Pending to collect *" figure
+  doc.setTextColor(...MUTED); doc.setFontSize(7); doc.setFont("helvetica","italic");
+  doc.text(
+    `* Pending to collect = value of issued books (${issuedTickets.toLocaleString()} tickets x Rs.1,000 = ${fmt(issuedValue)}) minus collected (${fmt(totalC)}). Only counts books already issued, not the full draw.`,
+    14, yEnd, { maxWidth: w-28 }
+  );
+  return yEnd + 8;
 }
 
 // ── 2. COUPON SALE ────────────────────────────────────────────
@@ -467,7 +466,11 @@ export function generateCombinedPDF(selectedIds, data) {
 }
 
 export function downloadPDF(doc, filename) {
-  doc.save(`${filename}_${new Date().toISOString().split("T")[0]}.pdf`);
+  const d = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  const date = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const time = `${pad(d.getHours())}${pad(d.getMinutes())}`;
+  doc.save(`${filename}_${date}_${time}.pdf`);
 }
 
 export function printPDF(doc) {
