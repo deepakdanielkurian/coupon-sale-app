@@ -1,6 +1,6 @@
 import { useApp } from "../data/AppContext";
 
-const GREEN = "#1a6b3c", WHITE = "#fff";
+const GREEN = "#19703d", WHITE = "#fff";
 
 const ACTION_META = {
   ADD_MEMBER:    { icon:"ti-user-plus",    color:"#1565c0", bg:"#e3f2fd",  label:"Member added" },
