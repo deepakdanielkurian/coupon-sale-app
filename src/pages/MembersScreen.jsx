@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApp } from "../data/AppContext";
-import { LABELS, getMemberStats, getBookStats, fmt } from "../data/store";
+import { LABELS, getMemberStats, getBookStats, fmt, initials } from "../data/store";
 import { generateMemberId } from "../data/store";
 import { getSeriesFromBook } from "../data/bookConfig";
 import { Badge, SectionLabel, InputField, PrimaryButton, OutlineButton, InfoChip } from "../components/UI";
@@ -314,9 +314,12 @@ function MemberDetail({ member, onEdit, onDeleted }) {
   const { books, collections } = data;
 
   // Always use live collections from context
-  const stats   = getMemberStats(member.id, books, collections);
+  const stats   = getMemberStats(member, books, collections);
   const cfg     = LABELS[member.label]||LABELS.committee_member;
-  const memberCols = collections.filter(c=>c.memberId===member.id).sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
+  // Match collections by EITHER the Firestore doc id or the custom memberId field
+  const memberCols = collections
+    .filter(c => c.memberId===member.id || (member.memberId && c.memberId===member.memberId))
+    .sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
 
   const [tab,            setTab]           = useState("overview");
   const [collectingBook, setCollectingBook]= useState(null);
@@ -344,7 +347,7 @@ function MemberDetail({ member, onEdit, onDeleted }) {
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #eee", padding:"12px 14px", marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10, paddingBottom:10, borderBottom:"1px solid #f5f5f5" }}>
           <div style={{ width:48,height:48,borderRadius:"50%",background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:cfg.color,flexShrink:0 }}>
-            {(member.firstName[0]+member.lastName[0]).toUpperCase()}
+            {initials(member)}
           </div>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:15,fontWeight:700,color:"#1a1a1a" }}>{member.firstName} {member.lastName}</div>
@@ -723,13 +726,13 @@ export default function MembersScreen() {
         {filtered.length===0&&<div style={{ textAlign:"center",color:"#aaa",fontSize:12,padding:"30px 0" }}>No members found</div>}
 
         {filtered.map(m=>{
-          const stats=getMemberStats(m.id,data.books,data.collections);
+          const stats=getMemberStats(m,data.books,data.collections);
           const cfg=LABELS[m.label]||LABELS.committee_member;
           return(
             <div key={m.id} onClick={()=>{setSelected(m);setView("detail");}}
               style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:7,cursor:"pointer",display:"flex",alignItems:"center",gap:8 }}>
               <div style={{ width:38,height:38,borderRadius:"50%",background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:cfg.color,flexShrink:0 }}>
-                {(m.firstName[0]+m.lastName[0]).toUpperCase()}
+                {initials(m)}
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:13,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div>

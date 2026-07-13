@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApp } from "../data/AppContext";
-import { getBookStats, getMemberStats, LABELS, fmt } from "../data/store";
+import { getBookStats, getMemberStats, LABELS, fmt, initials } from "../data/store";
 import { BOOK_SERIES, getSeriesFromBook, TOTAL_TICKETS, TICKET_PRICE } from "../data/bookConfig";
 import { SectionLabel, Badge, StatusBadge } from "../components/UI";
 import { generateCombinedPDF, downloadPDF, printPDF } from "../utils/pdfGenerator";
@@ -102,7 +102,7 @@ function ReportPreview({ reportId, data }) {
         const used=new Set();
 
         const allMem=members.map(m=>{
-          const s=getMemberStats(m.id,books,collections);
+          const s=getMemberStats(m,books,collections);
           const common=commonAgg[mk(m)]||null;
           if(common) used.add(mk(m));
           return {m,s,common,sortAmt:s.totalCollected+(common?common.amount:0)};
@@ -116,7 +116,7 @@ function ReportPreview({ reportId, data }) {
         collectors.forEach(({m,s,common})=>{
           rows.push(
             <div key={m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-              <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
+              <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{initials(m)}</div>
               <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books</div></div>
               <div style={{ textAlign:"right" }}><div style={{ fontSize:11,fontWeight:700,color:GREEN }}>{fmt(s.totalCollected)}</div>{s.totalPending>0&&<div style={{ fontSize:9,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
             </div>
@@ -146,7 +146,7 @@ function ReportPreview({ reportId, data }) {
         zeroColl.forEach(({m,s})=>{
           rows.push(
             <div key={"z-"+m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8,opacity:0.75 }}>
-              <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
+              <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{initials(m)}</div>
               <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books · Not started</div></div>
               <div style={{ textAlign:"right" }}><div style={{ fontSize:11,fontWeight:700,color:"#aaa" }}>Rs.0</div>{s.totalPending>0&&<div style={{ fontSize:9,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
             </div>
@@ -202,15 +202,15 @@ function ReportPreview({ reportId, data }) {
   if (reportId==="member") return (
     <div>
       <Hdr/>
-      {[...members].map(m=>({m,c:getMemberStats(m.id,books,collections).totalCollected}))
+      {[...members].map(m=>({m,c:getMemberStats(m,books,collections).totalCollected}))
         .sort((a,b)=>b.c-a.c).map(({m})=>{
-        const s=getMemberStats(m.id,books,collections);
+        const s=getMemberStats(m,books,collections);
         const cfg=LABELS[m.label]||LABELS.committee_member;
         const mCols=collections.filter(c=>c.memberId===m.id||m.memberId===c.memberId).sort((a,b)=>new Date(b.date)-new Date(a.date));
         return(
           <div key={m.id} style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:10 }}>
             <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingBottom:8,borderBottom:"1px solid #f5f5f5" }}>
-              <div style={{ width:34,height:34,borderRadius:"50%",background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:cfg.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
+              <div style={{ width:34,height:34,borderRadius:"50%",background:cfg.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:cfg.color,flexShrink:0 }}>{initials(m)}</div>
               <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><Badge type={m.label}/>{m.memberId&&m.memberId.startsWith('NCB-')&&<span style={{fontSize:9,color:"#aaa",marginLeft:5}}>{m.memberId}</span>}</div>
               <div style={{ textAlign:"right" }}><div style={{ fontSize:12,fontWeight:700,color:GREEN }}>{fmt(s.totalCollected)}</div>{s.totalPending>0&&<div style={{ fontSize:10,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
             </div>
@@ -230,7 +230,7 @@ function ReportPreview({ reportId, data }) {
 
   // ── PENDING ───────────────────────────────────────────────
   if (reportId==="pending") {
-    const pm=members.map(m=>({...m,...getMemberStats(m.id,books,collections)})).filter(m=>m.totalPending>0).sort((a,b)=>b.totalCollected-a.totalCollected);
+    const pm=members.map(m=>({...m,...getMemberStats(m,books,collections)})).filter(m=>m.totalPending>0).sort((a,b)=>b.totalCollected-a.totalCollected);
     return(
       <div>
         <Hdr/>
@@ -240,7 +240,7 @@ function ReportPreview({ reportId, data }) {
         </div>
         {pm.length===0?<div style={{ textAlign:"center",color:GREEN,fontSize:12,padding:"20px 0" }}>✅ All collections complete!</div>:pm.map(m=>(
           <div key={m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"8px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-            <div style={{ width:30,height:30,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+m.lastName[0]).toUpperCase()}</div>
+            <div style={{ width:30,height:30,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{initials(m)}</div>
             <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:10,color:"#888" }}>{m.phone}</div></div>
             <div style={{ textAlign:"right" }}><div style={{ fontSize:13,fontWeight:700,color:"#c62828" }}>{fmt(m.totalPending)}</div></div>
           </div>

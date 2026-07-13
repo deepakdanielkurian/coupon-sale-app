@@ -141,7 +141,7 @@ function addSummary(doc, data, startY) {
 
   // ── Build all member data with their matched common tickets ──
   const allMemData = members.map(m=>{
-    const s = getMemberStats(m.id,books,collections);
+    const s = getMemberStats(m,books,collections);
     const mk = memberKey(m);
     const common = commonAgg[mk] || null;
     if (common) usedCommonKeys.add(mk);
@@ -239,11 +239,11 @@ function addMemberWise(doc, data, startY) {
 
   // Sort members by collected amount (highest first)
   const sortedMembers = [...members].map(m=>({
-    m, collected: getMemberStats(m.id,books,collections).totalCollected
+    m, collected: getMemberStats(m,books,collections).totalCollected
   })).sort((a,b)=> b.collected - a.collected).map(x=>x.m);
 
   sortedMembers.forEach(member=>{
-    const stats = getMemberStats(member.id,books,collections);
+    const stats = getMemberStats(member,books,collections);
     const cfg   = LABELS[member.label]||LABELS.committee_member;
 
     // Last collected date for this member
@@ -298,7 +298,7 @@ function addPending(doc, data, startY) {
   const {books,collections,members} = data;
   const w = pageW(doc); let y = startY;
 
-  const pm = members.map(m=>({...m,...getMemberStats(m.id,books,collections)})).filter(m=>m.totalPending>0).sort((a,b)=>b.totalCollected-a.totalCollected);
+  const pm = members.map(m=>({...m,...getMemberStats(m,books,collections)})).filter(m=>m.totalPending>0).sort((a,b)=>b.totalCollected-a.totalCollected);
   const totalPending = pm.reduce((s,m)=>s+m.totalPending,0);
 
   doc.setFillColor(250,238,218); doc.roundedRect(14,y,w-28,12,2,2,"F");

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApp } from "../data/AppContext";
-import { fmt } from "../data/store";
+import { fmt, initials } from "../data/store";
 
 const GREEN = "#1a6b3c";
 
@@ -180,7 +180,7 @@ export default function RemittanceScreen({ onBack }) {
                 : (member ? `${member.firstName} ${member.lastName}` : "Unknown");
               const initials = isCommon
                 ? "C"
-                : member ? (member.firstName[0]+member.lastName[0]).toUpperCase() : "?";
+                : initials(member);
               return (
                 <div key={col.id} style={{ background:"#fff", borderRadius:11, border:"1px solid #ffe082", padding:"11px 13px", marginBottom:8 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>

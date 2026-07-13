@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useApp } from "../data/AppContext";
-import { LABELS, getBookStats, fmt } from "../data/store";
+import { LABELS, getBookStats, fmt, initials } from "../data/store";
 import { BOOK_SERIES, ALL_BOOKS, TICKET_PRICE, TOTAL_TICKETS, getSeriesFromBook, getSeriesSummary } from "../data/bookConfig";
 import { fixBookTicketCount } from "../firestoreService";
 import { Badge, SectionLabel, InputField, PrimaryButton, OutlineButton, InfoChip, StatusBadge } from "../components/UI";
@@ -577,7 +577,7 @@ function AssignBookForm({ onSave, onCancel }) {
           {/* Selected member chip */}
           {member && !creatingMember && (
             <div style={{ display:"flex",alignItems:"center",gap:10,background:"#f0f9f4",border:`1.5px solid ${GREEN}`,borderRadius:9,padding:"8px 10px",marginBottom:8 }}>
-              <div style={{ width:32,height:32,borderRadius:9,background:LABELS[member.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:LABELS[member.label]?.color,flexShrink:0 }}>{(member.firstName[0]+member.lastName[0]).toUpperCase()}</div>
+              <div style={{ width:32,height:32,borderRadius:9,background:LABELS[member.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:LABELS[member.label]?.color,flexShrink:0 }}>{initials(member)}</div>
               <div style={{ flex:1 }}><div style={{ fontSize:12,fontWeight:700,color:"#1a1a1a" }}>{member.firstName} {member.lastName}</div><span style={{ fontSize:9,fontWeight:600,padding:"2px 6px",borderRadius:5,background:LABELS[member.label]?.bg,color:LABELS[member.label]?.color }}>{LABELS[member.label]?.label}</span></div>
               <div style={{ fontSize:11,fontWeight:700,color:"#2C2C2A",marginRight:6 }}>{memberDBBks.length} book{memberDBBks.length!==1?"s":""}</div>
               <button onClick={()=>{setMemberId("");setShowMemberList(false);}} style={{ background:"none",border:"none",color:"#999",cursor:"pointer",fontSize:16 }}>✕</button>
@@ -606,7 +606,7 @@ function AssignBookForm({ onSave, onCancel }) {
                   {filteredMembers.map(m=>(
                     <div key={m.id} onClick={()=>{setMemberId(m.id);setShowMemberList(false);setMemberSearch("");setErrors(v=>({...v,member:""}));}}
                       style={{ display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderBottom:"0.5px solid #f5f5f5",cursor:"pointer" }}>
-                      <div style={{ width:28,height:28,borderRadius:7,background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{(m.firstName[0]+(m.lastName[0]||"")).toUpperCase()}</div>
+                      <div style={{ width:28,height:28,borderRadius:7,background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{initials(m)}</div>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:12,fontWeight:600,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div>
                         <div style={{ fontSize:10,color:"#888" }}>{LABELS[m.label]?.label}{m.phone?` · ${m.phone}`:""}</div>
