@@ -5,6 +5,7 @@ import { BOOK_SERIES, ALL_BOOKS, TICKET_PRICE, TOTAL_TICKETS, getSeriesFromBook,
 import { fixBookTicketCount } from "../firestoreService";
 import { Badge, SectionLabel, InputField, PrimaryButton, OutlineButton, InfoChip, StatusBadge } from "../components/UI";
 import EditBookModal from "./EditBookModal";
+import TicketLookup from "./TicketLookup";
 import EditCollectionModal from "./EditCollectionModal";
 
 const GREEN = "#1a6b3c";
@@ -802,13 +803,22 @@ export default function BooksScreen({ triggerCollect }) {
     </div>
   );
 
+  // Ticket lookup screen
+  if (view==="ticket") return <TicketLookup onClose={()=>setView("list")}/>;
+
   return(
     <div style={{ display:"flex",flexDirection:"column",flex:1,overflow:"hidden" }}>
       {editingBook&&<EditBookModal book={editingBook} onClose={()=>setEditingBook(null)}/>}
       {editingCol&&<EditCollectionModal col={editingCol} book={data.books.find(b=>b.id===editingCol.bookId)} onClose={()=>setEditingCol(null)}/>}
-      <div style={{ background:GREEN,padding:"10px 14px 12px" }}>
-        <div style={{ color:"#fff",fontSize:15,fontWeight:700 }}>Coupon books</div>
-        <div style={{ color:"rgba(255,255,255,0.65)",fontSize:10,marginTop:1 }}>500 books · 10,000 tickets · Rs.1,000 each</div>
+      <div style={{ background:GREEN,padding:"10px 14px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
+        <div>
+          <div style={{ color:"#fff",fontSize:15,fontWeight:700 }}>Coupon books</div>
+          <div style={{ color:"rgba(255,255,255,0.65)",fontSize:10,marginTop:1 }}>494 books · 10,000 tickets · Rs.1,000 each</div>
+        </div>
+        <button onClick={()=>setView("ticket")}
+          style={{ background:"rgba(255,255,255,0.18)",border:"1px solid rgba(255,255,255,0.3)",color:"#fff",borderRadius:8,padding:"7px 11px",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5,flexShrink:0 }}>
+          <i className="ti ti-search" style={{ fontSize:14 }}/>Find ticket
+        </button>
       </div>
       <div style={{ background:"#f5f7f5",flex:1,overflowY:"auto",padding:"10px 12px 4px" }}>
 
