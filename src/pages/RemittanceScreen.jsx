@@ -178,13 +178,13 @@ export default function RemittanceScreen({ onBack }) {
               const displayName = isCommon
                 ? (buyerNames.length > 0 ? buyerNames.join(", ") : "Common book sale")
                 : (member ? `${member.firstName} ${member.lastName}` : "Unknown");
-              const initials = isCommon
+              const avatarText = isCommon
                 ? "C"
                 : initials(member);
               return (
                 <div key={col.id} style={{ background:"#fff", borderRadius:11, border:"1px solid #ffe082", padding:"11px 13px", marginBottom:8 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-                    <div style={{ width:34, height:34, borderRadius:"50%", background:isCommon?"#f3e5f5":"#e8f5ee", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:isCommon?"#4a148c":GREEN, flexShrink:0 }}>{initials}</div>
+                    <div style={{ width:34, height:34, borderRadius:"50%", background:isCommon?"#f3e5f5":"#e8f5ee", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:isCommon?"#4a148c":GREEN, flexShrink:0 }}>{avatarText}</div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>
                         {displayName}
