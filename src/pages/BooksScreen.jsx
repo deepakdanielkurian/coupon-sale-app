@@ -760,13 +760,25 @@ export default function BooksScreen({ triggerCollect }) {
   const [search, setSearch]= useState("");
 
   const filtered = useMemo(()=>{
+    // If the search is a pure number, treat it as a TICKET number lookup
+    const searchNum = /^\d+$/.test(search.trim()) ? parseInt(search.trim(),10) : null;
+
     const result = data.books.filter(b=>{
       const sm = fSeries==="all"||b.series===fSeries||b.bookNumber?.startsWith(fSeries);
       const st = fStatus==="all"||b.status===fStatus;
       const tp = fType==="all"||(fType==="common"&&b.isCommon)||(fType==="member"&&!b.isCommon);
-      const member = data.members.find(m=>m.id===b.memberId);
+      const member = data.members.find(m=>m.id===b.memberId||m.memberId===b.memberId);
       const memberName = member?`${member.firstName} ${member.lastName}`.toLowerCase():"";
-      const sq = !search||(b.bookNumber?.toLowerCase().includes(search.toLowerCase())||memberName.includes(search.toLowerCase()));
+
+      let sq;
+      if (!search) {
+        sq = true;
+      } else if (searchNum !== null) {
+        // Ticket number: does this book's range contain it?
+        sq = b.ticketFrom!=null && b.ticketTo!=null && searchNum>=b.ticketFrom && searchNum<=b.ticketTo;
+      } else {
+        sq = b.bookNumber?.toLowerCase().includes(search.toLowerCase()) || memberName.includes(search.toLowerCase());
+      }
       return sm&&st&&tp&&sq;
     });
     // Common books always at top
@@ -830,7 +842,7 @@ export default function BooksScreen({ triggerCollect }) {
         {/* Search */}
         <div style={{ background:"#fff",borderRadius:9,border:"1px solid #eee",display:"flex",alignItems:"center",padding:"0 10px",gap:6,marginBottom:10 }}>
           <i className="ti ti-search" style={{ color:"#ccc",fontSize:15 }}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by book number or member name..."
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search book no, ticket no, or member..."
             style={{ flex:1,border:"none",outline:"none",fontSize:12,color:"#1a1a1a",background:"transparent",padding:"10px 0" }}/>
           {search&&<button onClick={()=>setSearch("")} style={{ background:"none",border:"none",cursor:"pointer",color:"#aaa",padding:0 }}><i className="ti ti-x" style={{ fontSize:14 }}/></button>}
         </div>
@@ -888,7 +900,30 @@ export default function BooksScreen({ triggerCollect }) {
             </div>
           </div>
         )}
-        {filtered.length===0&&<div style={{ textAlign:"center",color:"#aaa",fontSize:12,padding:"24px 0" }}>No books found</div>}
+        {filtered.length===0&&(()=>{
+          const n = /^\d+$/.test(search.trim()) ? parseInt(search.trim(),10) : null;
+          const def = n!==null ? ALL_BOOKS.find(b=>n>=b.ticketFrom&&n<=b.ticketTo) : null;
+          if (def) {
+            // Ticket exists in the master config but its book isn't assigned yet
+            return (
+              <div style={{ background:"#fff8e1",border:"1px solid #ffe082",borderRadius:10,padding:"14px",textAlign:"center" }}>
+                <i className="ti ti-package" style={{ fontSize:26,color:"#e65100",display:"block",marginBottom:6 }}/>
+                <div style={{ fontSize:13,fontWeight:700,color:"#e65100",marginBottom:3 }}>Ticket {n} — not issued yet</div>
+                <div style={{ fontSize:11,color:"#e65100",lineHeight:1.5 }}>
+                  It belongs to book <strong>{def.bookNumber}</strong> ({def.ticketFrom}–{def.ticketTo}, {def.ticketCount} tickets), which hasn't been assigned to anyone. It's still in stock.
+                </div>
+                <button onClick={()=>setView("ticket")}
+                  style={{ marginTop:9,background:"#e65100",color:"#fff",border:"none",borderRadius:8,padding:"7px 14px",fontSize:11,fontWeight:700,cursor:"pointer" }}>
+                  Open full ticket lookup
+                </button>
+              </div>
+            );
+          }
+          if (n!==null) {
+            return <div style={{ textAlign:"center",color:"#c62828",fontSize:12,padding:"24px 0" }}>Ticket {n} is outside the valid range (10001–20000)</div>;
+          }
+          return <div style={{ textAlign:"center",color:"#aaa",fontSize:12,padding:"24px 0" }}>No books found</div>;
+        })()}
 
         {filtered.map(book=>{
           const stats  = getBookStats(book,data.collections);
