@@ -311,7 +311,7 @@ function MemberDetail({ member, onEdit, onDeleted }) {
     await deleteMember(member.id);
     if (onDeleted) onDeleted();
   }
-  const { books, collections } = data;
+  const { books, collections, members } = data;
 
   // Always use live collections from context
   const stats   = getMemberStats(member, books, collections);
