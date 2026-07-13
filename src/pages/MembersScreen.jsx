@@ -580,6 +580,13 @@ function MemberDetail({ member, onEdit, onDeleted }) {
                         </span>
                       )}
                     </div>
+                    {/* Edit button */}
+                    <div style={{ display:"flex",justifyContent:"flex-end",marginBottom:6 }}>
+                      <button onClick={()=>setEditingCol(col)}
+                        style={{ background:"#f0f9f4",border:"1px solid #a5d6a7",color:GREEN,borderRadius:7,padding:"4px 10px",fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:4 }}>
+                        <i className="ti ti-edit" style={{ fontSize:12 }}/>Edit entry
+                      </button>
+                    </div>
                     {/* Row 2: Detail lines */}
                     <div style={{ borderTop:"1px solid #f5f5f5",paddingTop:6,display:"flex",flexDirection:"column",gap:3 }}>
                       <div style={{ display:"flex",justifyContent:"space-between",fontSize:11 }}>

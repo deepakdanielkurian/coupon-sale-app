@@ -132,11 +132,41 @@ export async function reassignBookRange(bookId, newBookData) {
 }
 
 // ── Collections ────────────────────────────────────────────────
+
+// Recalculate a book's status from ALL its remaining collections.
+// Called after edit/delete so reducing tickets correctly un-completes a book.
+async function recalcBookStatus(bookId) {
+  if (!bookId) return;
+  const bookSnap = await getDoc(doc(db, C.BOOKS, bookId));
+  if (!bookSnap.exists()) return;
+  const bd = bookSnap.data();
+  const effective = (bd.ticketCount || 0) - (bd.returnedTickets || 0);
+
+  const allCols = await getDocs(collection(db, C.COLLECTIONS));
+  const totalSold = allCols.docs
+    .filter(d => d.data().bookId === bookId)
+    .reduce((s, d) => s + (d.data().ticketsSold || 0), 0);
+
+  let status;
+  if (totalSold <= 0)            status = "not_started";
+  else if (totalSold >= effective) status = "complete";
+  else                            status = "ongoing";
+
+  await updateDoc(doc(db, C.BOOKS, bookId), { status, updatedAt: serverTimestamp() });
+}
+
 export async function updateCollection(id, data) {
   await updateDoc(doc(db, C.COLLECTIONS, id), { ...data, updatedAt: serverTimestamp() });
+  // Cascade: book status must reflect the new ticket count
+  await recalcBookStatus(data.bookId);
 }
+
 export async function deleteCollection(id) {
+  // Read the bookId BEFORE deleting so we can recalc afterwards
+  const snap = await getDoc(doc(db, C.COLLECTIONS, id));
+  const bookId = snap.exists() ? snap.data().bookId : null;
   await deleteDoc(doc(db, C.COLLECTIONS, id));
+  await recalcBookStatus(bookId);
 }
 export async function addCollection(data) {
   // Write the collection entry first
