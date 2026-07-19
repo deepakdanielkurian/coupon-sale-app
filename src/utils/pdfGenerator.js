@@ -129,11 +129,21 @@ function addSummary(doc, data, startY) {
       const raw = (e.buyerName||"").trim();
       if (!raw) return;
       const key = raw.toLowerCase();
-      if (!commonAgg[key]) commonAgg[key] = { displayName: raw, tickets:0, amount:0, bookNo: book?.bookNumber||"C" };
+      if (!commonAgg[key]) commonAgg[key] = { displayName: raw, tickets:0, amount:0, bookNo: book?.bookNumber||"C", ticketNos:[] };
       commonAgg[key].tickets += 1;
       commonAgg[key].amount  += (e.amount||1000);
+      const tn = parseInt(e.ticketNo,10);
+      if (!isNaN(tn)) commonAgg[key].ticketNos.push(tn);
     });
   });
+
+  // Format a buyer's tickets as "first-last" range (or single number)
+  function ticketRange(nos){
+    if (!nos || nos.length===0) return "";
+    const sorted = [...nos].sort((a,b)=>a-b);
+    const lo = sorted[0], hi = sorted[sorted.length-1];
+    return lo===hi ? `${lo}` : `${lo}-${hi}`;
+  }
 
   // Match common buyers to members by name (first+last, case-insensitive, trimmed)
   function memberKey(m){ return `${m.firstName} ${m.lastName}`.trim().toLowerCase(); }
@@ -166,7 +176,8 @@ function addSummary(doc, data, startY) {
     const status = s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started";
     memRows.push([`${m.firstName} ${m.lastName}`, s.memberBooks.length, `${s.soldTickets}/${s.totalTickets}`, fmt(s.totalCollected), fmt(s.totalPending), status]);
     if (common) {
-      memRows.push([`»  ${m.firstName} ${m.lastName}`, `Common book (${common.bookNo})`, `${common.tickets}/${common.tickets}`, fmt(common.amount), fmt(0), "Complete"]);
+      const rng = ticketRange(common.ticketNos);
+      memRows.push([`»  Common ${common.bookNo}${rng?" ("+rng+")":""}`, `Common book (${common.bookNo})`, `${common.tickets} tickets`, fmt(common.amount), fmt(0), "Complete"]);
     }
   });
 
@@ -176,7 +187,8 @@ function addSummary(doc, data, startY) {
     .map(([,v]) => v)
     .sort((a,b)=> b.amount - a.amount);
   commonOnly.forEach(cb=>{
-    memRows.push([cb.displayName, `Common book (${cb.bookNo})`, `${cb.tickets}/${cb.tickets}`, fmt(cb.amount), fmt(0), "Complete"]);
+    const rng = ticketRange(cb.ticketNos);
+    memRows.push([`Common ${cb.bookNo}${rng?" ("+rng+")":""}`, `Common book (${cb.bookNo})`, `${cb.tickets} tickets`, fmt(cb.amount), fmt(0), "Complete"]);
   });
 
   // 3. Zero-collection members last (have books, collected nothing)

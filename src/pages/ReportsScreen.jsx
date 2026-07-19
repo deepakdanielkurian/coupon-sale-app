@@ -94,10 +94,12 @@ function ReportPreview({ reportId, data }) {
           c.ticketEntries.forEach(e=>{
             const raw=(e.buyerName||"").trim(); if(!raw) return;
             const k=raw.toLowerCase();
-            if(!commonAgg[k]) commonAgg[k]={displayName:raw,tickets:0,amount:0,bookNo:bk?.bookNumber||"C"};
+            if(!commonAgg[k]) commonAgg[k]={displayName:raw,tickets:0,amount:0,bookNo:bk?.bookNumber||"C",ticketNos:[]};
             commonAgg[k].tickets+=1; commonAgg[k].amount+=(e.amount||1000);
+            const tn=parseInt(e.ticketNo,10); if(!isNaN(tn)) commonAgg[k].ticketNos.push(tn);
           });
         });
+        const ticketRange=(nos)=>{ if(!nos||!nos.length) return ""; const s=[...nos].sort((a,b)=>a-b); return s[0]===s[s.length-1]?`${s[0]}`:`${s[0]}-${s[s.length-1]}`; };
         const mk=m=>`${m.firstName} ${m.lastName}`.trim().toLowerCase();
         const used=new Set();
 
@@ -124,7 +126,7 @@ function ReportPreview({ reportId, data }) {
           if(common){
             rows.push(
               <div key={m.id+"-c"} style={{ background:"#f3e5f5",borderRadius:8,border:"1px solid #e1bee7",padding:"6px 10px 6px 22px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-                <div style={{ flex:1 }}><div style={{ fontSize:10,fontWeight:600,color:"#4a148c" }}>» {m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>Common book ({common.bookNo}) · {common.tickets} tickets</div></div>
+                <div style={{ flex:1 }}><div style={{ fontSize:10,fontWeight:600,color:"#4a148c" }}>Common {common.bookNo}{ticketRange(common.ticketNos)?` (${ticketRange(common.ticketNos)})`:""}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>{common.tickets} tickets sold</div></div>
                 <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(common.amount)}</div>
               </div>
             );
@@ -134,9 +136,9 @@ function ReportPreview({ reportId, data }) {
         // Common-only buyers
         Object.entries(commonAgg).filter(([k])=>!used.has(k)).map(([,v])=>v).sort((a,b)=>b.amount-a.amount).forEach(cb=>{
           rows.push(
-            <div key={"co-"+cb.displayName} style={{ background:"#f3e5f5",borderRadius:8,border:"1px solid #e1bee7",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+            <div key={"co-"+cb.bookNo+"-"+(cb.ticketNos[0]||0)} style={{ background:"#f3e5f5",borderRadius:8,border:"1px solid #e1bee7",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
               <div style={{ width:28,height:28,borderRadius:"50%",background:"#4a148c",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff",flexShrink:0 }}>C</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{cb.displayName}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>Common book ({cb.bookNo}) · {cb.tickets} tickets</div></div>
+              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>Common {cb.bookNo}{ticketRange(cb.ticketNos)?` (${ticketRange(cb.ticketNos)})`:""}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>{cb.tickets} tickets sold</div></div>
               <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(cb.amount)}</div>
             </div>
           );
