@@ -176,8 +176,7 @@ function addSummary(doc, data, startY) {
     const status = s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started";
     memRows.push([`${m.firstName} ${m.lastName}`, s.memberBooks.length, `${s.soldTickets}/${s.totalTickets}`, fmt(s.totalCollected), fmt(s.totalPending), status]);
     if (common) {
-      const rng = ticketRange(common.ticketNos);
-      memRows.push([`»  Common ${common.bookNo}${rng?" ("+rng+")":""}`, `Common book (${common.bookNo})`, `${common.tickets} tickets`, fmt(common.amount), fmt(0), "Complete"]);
+      memRows.push([`»  ${m.firstName} ${m.lastName}`, `Common book (${common.bookNo})`, `${common.tickets}/${common.tickets}`, fmt(common.amount), fmt(0), "Complete"]);
     }
   });
 
@@ -187,8 +186,7 @@ function addSummary(doc, data, startY) {
     .map(([,v]) => v)
     .sort((a,b)=> b.amount - a.amount);
   commonOnly.forEach(cb=>{
-    const rng = ticketRange(cb.ticketNos);
-    memRows.push([`Common ${cb.bookNo}${rng?" ("+rng+")":""}`, `Common book (${cb.bookNo})`, `${cb.tickets} tickets`, fmt(cb.amount), fmt(0), "Complete"]);
+    memRows.push([cb.displayName, `Common book (${cb.bookNo})`, `${cb.tickets}/${cb.tickets}`, fmt(cb.amount), fmt(0), "Complete"]);
   });
 
   // 3. Zero-collection members last (have books, collected nothing)
