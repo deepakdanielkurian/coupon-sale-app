@@ -11,6 +11,7 @@ import ActivityLogScreen    from "./pages/ActivityLogScreen";
 import UserManagementScreen from "./pages/UserManagementScreen";
 import BackupScreen         from "./pages/BackupScreen";
 import RemittanceScreen     from "./pages/RemittanceScreen";
+import ShareholdersScreen from "./pages/ShareholdersScreen";
 
 const GREEN = "#1a6b3c";
 
@@ -113,7 +114,7 @@ function BottomNav({ active, onNavigate }) {
 function AppInner() {
   const { currentUser, can } = useApp();
   const [active, setActive]  = useState("home");
-  const [sub, setSub]        = useState(null); // logs | users | backup
+  const [sub, setSub]        = useState(null); // logs | users | backup | remittance | shareholders
 
   if (!currentUser) return <LoginScreen/>;
 
@@ -135,6 +136,7 @@ function AppInner() {
   if (sub==="users"  && can.manageUsers()) return subScreenWrap(<UserManagementScreen onBack={()=>setSub(null)}/>);
   if (sub==="backup"     && can.manageUsers()) return subScreenWrap(<BackupScreen         onBack={()=>setSub(null)}/>);
   if (sub==="remittance" && can.manageUsers()) return subScreenWrap(<RemittanceScreen    onBack={()=>setSub(null)}/>);
+  if (sub==="shareholders")                   return subScreenWrap(<ShareholdersScreen  onBack={()=>setSub(null)}/>);
 
   const fullScreen = ["books","members","reports"];
   const screens = {

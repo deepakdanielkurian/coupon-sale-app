@@ -11,7 +11,7 @@ const GREEN = "#1a6b3c";
 // Report preview — inline screen view for each report type
 // ─────────────────────────────────────────────────────────────
 function ReportPreview({ reportId, data }) {
-  const { books, collections, members, remittances=[] } = data;
+  const { books, collections, members, remittances=[], shareholders=[] } = data;
   const totalC  = collections.reduce((s,c)=>s+(c.amount||0),0);
   const sold    = collections.reduce((s,c)=>s+(c.ticketsSold||0),0);
   // Pending is based on ISSUED books only, not the full 10,000 tickets
@@ -160,6 +160,38 @@ function ReportPreview({ reportId, data }) {
       <div style={{ marginTop:8,fontSize:9,color:"#888",lineHeight:1.5,fontStyle:"italic" }}>
         * Pending to collect = value of issued books ({issuedTickets.toLocaleString()} tickets × Rs.1,000 = {fmt(totalV)}) − collected ({fmt(totalC)}). Only counts books already issued, not the full draw.
       </div>
+
+      {/* Ticket holders — display only, excluded from all totals above */}
+      {shareholders.length>0 && (
+        <>
+          <div style={{ marginTop:14 }}><SectionLabel>Ticket holders (for recognition only)</SectionLabel></div>
+          <div style={{ background:"#f3e5f5",border:"1px solid #e1bee7",borderRadius:8,padding:"7px 10px",marginBottom:7,fontSize:9,color:"#4a148c",lineHeight:1.5 }}>
+            Shown for recognition only — not included in the collections, balances or any total above.
+          </div>
+          {[...shareholders].sort((a,b)=>(parseInt(b.amount)||0)-(parseInt(a.amount)||0)).map(s=>(
+            <div key={s.id} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0e6f5",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+              <div style={{ width:26,height:26,borderRadius:"50%",background:"#f3e5f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#4a148c",flexShrink:0 }}>
+                {initials({firstName:s.name,lastName:""})}
+              </div>
+              <div style={{ flex:1,minWidth:0 }}>
+                <div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{s.name}</div>
+                <div style={{ fontSize:9,color:"#888" }}>
+                  {parseInt(s.tickets)||0} ticket{(parseInt(s.tickets)||0)!=1?"s":""}{s.fromName?` · from ${s.fromName}`:""}
+                </div>
+              </div>
+              <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(parseInt(s.amount)||0)}</div>
+            </div>
+          ))}
+          <div style={{ background:"#f3e5f5",borderRadius:8,padding:"8px 11px",display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:3 }}>
+            <span style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>
+              Total ({shareholders.reduce((s,x)=>s+(parseInt(x.tickets)||0),0)} tickets)
+            </span>
+            <span style={{ fontSize:12,fontWeight:700,color:"#4a148c" }}>
+              {fmt(shareholders.reduce((s,x)=>s+(parseInt(x.amount)||0),0))}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 

@@ -72,7 +72,7 @@ const TABLE_STYLES = {
 
 // ── 1. SUMMARY ────────────────────────────────────────────────
 function addSummary(doc, data, startY) {
-  const {books,collections,members} = data;
+  const {books,collections,members,shareholders=[]} = data;
   const w = pageW(doc);
   let y = startY;
 
@@ -214,7 +214,55 @@ function addSummary(doc, data, startY) {
     `* Pending to collect = value of issued books (${issuedTickets.toLocaleString()} tickets x Rs.1,000 = ${fmt(issuedValue)}) minus collected (${fmt(totalC)}). Only counts books already issued, not the full draw.`,
     14, yEnd, { maxWidth: w-28 }
   );
-  return yEnd + 8;
+  yEnd += 10;
+
+  // ── TICKET HOLDERS (DISPLAY ONLY — excluded from every total above) ──
+  if (shareholders.length > 0) {
+    if (yEnd > 235) { doc.addPage(); yEnd = 20; }
+    yEnd = secTitle(doc, "Ticket holders (for recognition only)", yEnd);
+
+    doc.setTextColor(...MUTED); doc.setFontSize(7); doc.setFont("helvetica","italic");
+    doc.text(
+      "This list is shown for recognition only. These entries are NOT included in the collections, balances or any total in this report.",
+      14, yEnd, { maxWidth: w-28 }
+    );
+    yEnd += 7;
+
+    const shRows = [...shareholders]
+      .sort((a,b)=>(parseInt(b.amount)||0)-(parseInt(a.amount)||0))
+      .map(s=>[
+        s.name || "—",
+        `${parseInt(s.tickets)||0}`,
+        s.fromName || "—",
+        fmt(parseInt(s.amount)||0),
+        s.date || "—",
+      ]);
+
+    const shTickets = shareholders.reduce((sum,s)=>sum+(parseInt(s.tickets)||0),0);
+    const shAmount  = shareholders.reduce((sum,s)=>sum+(parseInt(s.amount)||0),0);
+    shRows.push(["TOTAL", `${shTickets}`, "", fmt(shAmount), ""]);
+
+    autoTable(doc,{
+      startY:yEnd, ...TABLE_STYLES,
+      head:[["Ticket holder","Tickets","Taken from","Amount","Date"]],
+      body:shRows,
+      columnStyles:{ 3:{textColor:[74,20,140]} },
+      didParseCell:(hd)=>{
+        // Whole section tinted purple; total row in bold
+        if (hd.section==="body") {
+          hd.cell.styles.fillColor = [250,245,252];
+          if (hd.row.raw[0]==="TOTAL") {
+            hd.cell.styles.fontStyle = "bold";
+            hd.cell.styles.fillColor = [243,229,245];
+            hd.cell.styles.textColor = [74,20,140];
+          }
+        }
+      },
+    });
+    yEnd = doc.lastAutoTable.finalY + 8;
+  }
+
+  return yEnd;
 }
 
 // ── 2. COUPON SALE ────────────────────────────────────────────

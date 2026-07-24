@@ -13,6 +13,7 @@ const C = {
   USERS:       "app_users",
   BACKUPS:     "backups",
   REMITTANCES: "remittances",
+  SHAREHOLDERS:"shareholders",   // display-only registry, NEVER part of accounts
 };
 
 // ── Org config ────────────────────────────────────────────────
@@ -323,4 +324,22 @@ export function listenCollections(cb) {
 export function listenLogs(cb) {
   return onSnapshot(query(collection(db, C.LOGS), orderBy("createdAt", "desc")),
     s => cb(s.docs.map(d => ({ ...d.data(), id: d.id }))));
+}
+
+// ── Shareholders (DISPLAY ONLY) ───────────────────────────────
+// A standalone registry of people who took tickets, kept in its own
+// collection so it can NEVER affect books, collections, remittances
+// or any accounting total. Purely for recognition/display.
+export function listenShareholders(cb) {
+  return onSnapshot(query(collection(db, C.SHAREHOLDERS), orderBy("createdAt", "asc")),
+    s => cb(s.docs.map(d => ({ ...d.data(), id: d.id }))));
+}
+export async function addShareholder(data) {
+  return (await addDoc(collection(db, C.SHAREHOLDERS), { ...data, createdAt: serverTimestamp() })).id;
+}
+export async function updateShareholder(id, data) {
+  await updateDoc(doc(db, C.SHAREHOLDERS, id), { ...data, updatedAt: serverTimestamp() });
+}
+export async function deleteShareholder(id) {
+  await deleteDoc(doc(db, C.SHAREHOLDERS, id));
 }
