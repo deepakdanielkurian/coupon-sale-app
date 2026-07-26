@@ -214,34 +214,27 @@ function addSummary(doc, data, startY) {
     },
   });
   let yEnd = doc.lastAutoTable.finalY + 8;
-  // Footnote explaining the "Pending to collect *" figure
-  doc.setTextColor(...MUTED); doc.setFontSize(7); doc.setFont("helvetica","italic");
-  doc.text(
-    `* Pending to collect = value of issued books (${issuedTickets.toLocaleString()} tickets x Rs.1,000 = ${fmt(issuedValue)}) minus collected (${fmt(totalC)}). Only counts books already issued, not the full draw.`,
-    14, yEnd, { maxWidth: w-28 }
-  );
-  yEnd += 10;
 
-  // ── TICKET HOLDERS (DISPLAY ONLY — excluded from every total above) ──
+  // ── OUR SHAREHOLDERS (recognition list — sits right under the common section) ──
   if (shareholders.length > 0) {
-    if (yEnd > 235) { doc.addPage(); yEnd = 20; }
-    yEnd = secTitle(doc, "Ticket holders (for recognition only)", yEnd);
+    if (yEnd > 225) { doc.addPage(); yEnd = 20; }
+    yEnd = secTitle(doc, "With Gratitude — Our Shareholders", yEnd);
 
-    doc.setTextColor(...MUTED); doc.setFontSize(7); doc.setFont("helvetica","italic");
+    doc.setTextColor(...MUTED); doc.setFontSize(7.5); doc.setFont("helvetica","italic");
     doc.text(
-      "This list is shown for recognition only. These entries are NOT included in the collections, balances or any total in this report.",
+      "We gratefully acknowledge our shareholders below, who supported the Mega Lucky Draw 2026 by taking tickets through our Ticket Promoters. These names were kindly shared with us by our Ticket Promoters so that each shareholder's participation is recorded and remembered with appreciation. If any shareholder's name is missing, it can be added \u2014 please inform us through your Ticket Promoter.",
       14, yEnd, { maxWidth: w-28 }
     );
-    yEnd += 7;
+    yEnd += 15;
 
     const shRows = [...shareholders]
       .sort((a,b)=>(parseInt(b.amount)||0)-(parseInt(a.amount)||0))
       .map(s=>[
-        s.name || "—",
+        s.name || "\u2014",
         `${parseInt(s.tickets)||0}`,
-        s.fromName || "—",
+        s.fromName || "\u2014",
         fmt(parseInt(s.amount)||0),
-        s.date || "—",
+        s.date || "\u2014",
       ]);
 
     const shTickets = shareholders.reduce((sum,s)=>sum+(parseInt(s.tickets)||0),0);
@@ -250,11 +243,12 @@ function addSummary(doc, data, startY) {
 
     autoTable(doc,{
       startY:yEnd, ...TABLE_STYLES,
-      head:[["Ticket holder","Tickets","Taken from","Amount","Date"]],
+      styles:{ ...TABLE_STYLES.styles, fontSize:9, cellPadding:3 },
+      headStyles:{ ...TABLE_STYLES.headStyles, fillColor:[106,27,154], fontSize:8.5 },
+      head:[["Shareholder","Tickets taken","Through (seller)","Amount","Date"]],
       body:shRows,
-      columnStyles:{ 3:{textColor:[74,20,140]} },
+      columnStyles:{ 0:{fontStyle:"bold"}, 3:{textColor:[74,20,140]} },
       didParseCell:(hd)=>{
-        // Whole section tinted purple; total row in bold
         if (hd.section==="body") {
           hd.cell.styles.fillColor = [250,245,252];
           if (hd.row.raw[0]==="TOTAL") {
@@ -265,10 +259,16 @@ function addSummary(doc, data, startY) {
         }
       },
     });
-    yEnd = doc.lastAutoTable.finalY + 8;
+    yEnd = doc.lastAutoTable.finalY + 10;
   }
 
-  return yEnd;
+  // Footnote explaining the "Pending to collect *" figure (kept at the very end)
+  doc.setTextColor(...MUTED); doc.setFontSize(7); doc.setFont("helvetica","italic");
+  doc.text(
+    `* Pending to collect = value of issued books (${issuedTickets.toLocaleString()} tickets x Rs.1,000 = ${fmt(issuedValue)}) minus collected (${fmt(totalC)}). Only counts books already issued, not the full draw.`,
+    14, yEnd, { maxWidth: w-28 }
+  );
+  return yEnd + 8;
 }
 
 // ── 2. COUPON SALE ────────────────────────────────────────────

@@ -156,42 +156,42 @@ function ReportPreview({ reportId, data }) {
         });
         return rows;
       })()}
-      <TotalBar label="Grand total collected" value={fmt(totalC)}/>
-      <div style={{ marginTop:8,fontSize:9,color:"#888",lineHeight:1.5,fontStyle:"italic" }}>
-        * Pending to collect = value of issued books ({issuedTickets.toLocaleString()} tickets × Rs.1,000 = {fmt(totalV)}) − collected ({fmt(totalC)}). Only counts books already issued, not the full draw.
-      </div>
-
-      {/* Ticket holders — display only, excluded from all totals above */}
+      {/* Our Shareholders — recognition list, right under the common section */}
       {shareholders.length>0 && (
         <>
-          <div style={{ marginTop:14 }}><SectionLabel>Ticket holders (for recognition only)</SectionLabel></div>
-          <div style={{ background:"#f3e5f5",border:"1px solid #e1bee7",borderRadius:8,padding:"7px 10px",marginBottom:7,fontSize:9,color:"#4a148c",lineHeight:1.5 }}>
-            Shown for recognition only — not included in the collections, balances or any total above.
+          <div style={{ marginTop:12 }}><SectionLabel>With Gratitude — Our Shareholders</SectionLabel></div>
+          <div style={{ background:"#f3e5f5",border:"1px solid #e1bee7",borderRadius:8,padding:"9px 11px",marginBottom:8,fontSize:10,color:"#4a148c",lineHeight:1.6 }}>
+            We gratefully acknowledge our shareholders below, who supported the Mega Lucky Draw 2026 by taking tickets through our Ticket Promoters. These names were kindly shared with us by our Ticket Promoters so that each shareholder's participation is recorded and remembered with appreciation. If any shareholder's name is missing, it can be added — please inform us through your Ticket Promoter.
           </div>
           {[...shareholders].sort((a,b)=>(parseInt(b.amount)||0)-(parseInt(a.amount)||0)).map(s=>(
-            <div key={s.id} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0e6f5",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-              <div style={{ width:26,height:26,borderRadius:"50%",background:"#f3e5f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#4a148c",flexShrink:0 }}>
+            <div key={s.id} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0e6f5",padding:"8px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+              <div style={{ width:28,height:28,borderRadius:"50%",background:"#f3e5f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#4a148c",flexShrink:0 }}>
                 {initials({firstName:s.name,lastName:""})}
               </div>
               <div style={{ flex:1,minWidth:0 }}>
-                <div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{s.name}</div>
+                <div style={{ fontSize:13,fontWeight:700,color:"#1a1a1a" }}>{s.name}</div>
                 <div style={{ fontSize:9,color:"#888" }}>
-                  {parseInt(s.tickets)||0} ticket{(parseInt(s.tickets)||0)!=1?"s":""}{s.fromName?` · from ${s.fromName}`:""}
+                  {parseInt(s.tickets)||0} ticket{(parseInt(s.tickets)||0)!=1?"s":""} taken{s.fromName?` · through ${s.fromName}`:""}
                 </div>
               </div>
-              <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(parseInt(s.amount)||0)}</div>
+              <div style={{ fontSize:12,fontWeight:700,color:"#4a148c" }}>{fmt(parseInt(s.amount)||0)}</div>
             </div>
           ))}
-          <div style={{ background:"#f3e5f5",borderRadius:8,padding:"8px 11px",display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:3 }}>
+          <div style={{ background:"#f3e5f5",borderRadius:8,padding:"8px 11px",display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:3,marginBottom:6 }}>
             <span style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>
-              Total ({shareholders.reduce((s,x)=>s+(parseInt(x.tickets)||0),0)} tickets)
+              Total ({shareholders.reduce((s,x)=>s+(parseInt(x.tickets)||0),0)} tickets taken)
             </span>
-            <span style={{ fontSize:12,fontWeight:700,color:"#4a148c" }}>
+            <span style={{ fontSize:13,fontWeight:700,color:"#4a148c" }}>
               {fmt(shareholders.reduce((s,x)=>s+(parseInt(x.amount)||0),0))}
             </span>
           </div>
         </>
       )}
+
+      <TotalBar label="Grand total collected" value={fmt(totalC)}/>
+      <div style={{ marginTop:8,fontSize:9,color:"#888",lineHeight:1.5,fontStyle:"italic" }}>
+        * Pending to collect = value of issued books ({issuedTickets.toLocaleString()} tickets × Rs.1,000 = {fmt(totalV)}) − collected ({fmt(totalC)}). Only counts books already issued, not the full draw.
+      </div>
     </div>
   );
 
