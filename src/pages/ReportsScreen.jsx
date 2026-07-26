@@ -119,7 +119,7 @@ function ReportPreview({ reportId, data }) {
           rows.push(
             <div key={m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
               <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{initials(m)}</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books</div></div>
+              <div style={{ flex:1 }}><div style={{ fontSize:14,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books</div></div>
               <div style={{ textAlign:"right" }}><div style={{ fontSize:11,fontWeight:700,color:GREEN }}>{fmt(s.totalCollected)}</div>{s.totalPending>0&&<div style={{ fontSize:9,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
             </div>
           );
@@ -149,7 +149,7 @@ function ReportPreview({ reportId, data }) {
           rows.push(
             <div key={"z-"+m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8,opacity:0.75 }}>
               <div style={{ width:28,height:28,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{initials(m)}</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books · Not started</div></div>
+              <div style={{ flex:1 }}><div style={{ fontSize:14,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div><div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books · Not started</div></div>
               <div style={{ textAlign:"right" }}><div style={{ fontSize:11,fontWeight:700,color:"#aaa" }}>Rs.0</div>{s.totalPending>0&&<div style={{ fontSize:9,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}</div>
             </div>
           );

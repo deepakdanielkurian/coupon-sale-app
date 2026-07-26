@@ -196,9 +196,15 @@ function addSummary(doc, data, startY) {
 
   autoTable(doc,{
     startY:y, ...TABLE_STYLES,
+    styles:{ ...TABLE_STYLES.styles, fontSize:9, cellPadding:3 },   // larger rows for readability
+    headStyles:{ ...TABLE_STYLES.headStyles, fontSize:8.5 },
     head:[["Member","Books","Tickets","Collected","Pending","Status"]],
     body:memRows,
-    columnStyles:{3:{textColor:GREEN},4:{textColor:AMBER}},
+    columnStyles:{
+      0:{ fontStyle:"bold", fontSize:10 },   // Member NAME — biggest, bold
+      3:{ textColor:GREEN },
+      4:{ textColor:AMBER },
+    },
     // Style common-book rows with a distinct purple tint
     didParseCell: (hookData) => {
       if (hookData.section==="body" && hookData.row.raw[1] && String(hookData.row.raw[1]).startsWith("Common book")) {
