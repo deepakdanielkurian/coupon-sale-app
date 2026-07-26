@@ -276,6 +276,49 @@ function ReportPreview({ reportId, data }) {
     );
   }
 
+  // ── COMMITTEE MEMBERS ─────────────────────────────────────
+  if (reportId==="committee") {
+    const cm = members
+      .filter(m=>(m.label||"committee_member")==="committee_member")
+      .map(m=>({ m, s:getMemberStats(m,books,collections) }))
+      .sort((a,b)=>b.s.totalCollected-a.s.totalCollected);
+    const totCollected = cm.reduce((s,r)=>s+r.s.totalCollected,0);
+    const totPending   = cm.reduce((s,r)=>s+r.s.totalPending,0);
+    const totBooks     = cm.reduce((s,r)=>s+r.s.memberBooks.length,0);
+    return(
+      <div>
+        <Hdr/>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10 }}>
+          {[["Members",cm.length],["Books",totBooks],["Pending",fmt(totPending)]].map(([l,v])=>(
+            <div key={l} style={{ background:"#fff",borderRadius:9,border:"1px solid #eee",padding:"8px 9px" }}>
+              <div style={{ fontSize:9,color:"#aaa" }}>{l}</div>
+              <div style={{ fontSize:14,fontWeight:700,color:GREEN }}>{v}</div>
+            </div>
+          ))}
+        </div>
+        {cm.length===0
+          ? <div style={{ textAlign:"center",color:"#aaa",fontSize:12,padding:"24px 0" }}>No committee members found.</div>
+          : cm.map(({m,s})=>{
+            const status = s.memberBooks.length===0?"No books":s.totalPending===0&&s.totalCollected>0?"Complete":s.totalCollected>0?"Ongoing":"Not started";
+            return (
+              <div key={m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"9px 11px",marginBottom:5,display:"flex",alignItems:"center",gap:9 }}>
+                <div style={{ width:32,height:32,borderRadius:"50%",background:LABELS[m.label]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:LABELS[m.label]?.color,flexShrink:0 }}>{initials(m)}</div>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ fontSize:14,fontWeight:700,color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div>
+                  <div style={{ fontSize:9,color:"#888" }}>{s.memberBooks.length} books · {s.soldTickets} sold · {status}</div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:13,fontWeight:700,color:GREEN }}>{fmt(s.totalCollected)}</div>
+                  {s.totalPending>0&&<div style={{ fontSize:9,color:"#e65100" }}>{fmt(s.totalPending)} due</div>}
+                </div>
+              </div>
+            );
+          })}
+        <TotalBar label="Total collected by committee" value={fmt(totCollected)}/>
+      </div>
+    );
+  }
+
   // ── INVENTORY ─────────────────────────────────────────────
   if (reportId==="inventory") return (
     <div>
@@ -468,6 +511,7 @@ const REPORT_DEFS = [
   { id:"summary",    title:"Summary Report",           sub:"Grand total · series breakdown · member table",         icon:"ti-chart-bar",     iconBg:"#e8f5ee", color:GREEN,      pages:"~2 pages",  tags:["Grand total","A/B/C series","Member summary"] },
   { id:"coupon",     title:"Coupon Sale Report",        sub:"Book-wise · ticket ranges · collected vs pending",      icon:"ti-ticket",        iconBg:"#e3f2fd", color:"#1565c0",  pages:"~3 pages",  tags:["All books","Ticket ranges","Status"] },
   { id:"member",     title:"Member-wise Report",        sub:"Each member · books · collection history",              icon:"ti-user",          iconBg:"#fff3e0", color:"#7b4400",  pages:"~4 pages",  tags:["Profile","Books assigned","History"] },
+  { id:"committee",  title:"Committee Members Report",   sub:"Collections by committee members only",                 icon:"ti-users",         iconBg:"#e8f5ee", color:GREEN,      pages:"~1 page",   tags:["Committee only","Collected","Pending"] },
   { id:"pending",    title:"Pending / Defaulters",      sub:"Members with outstanding balance",                      icon:"ti-alert-triangle",iconBg:"#ffebee", color:"#c62828",  pages:"~1 page",   tags:["Overdue","Amount due","Contact"] },
   { id:"inventory",  title:"Book Inventory Report",     sub:"All 500 books · A/B/C series · issued vs available",    icon:"ti-books",         iconBg:"#f3e5f5", color:"#4a148c",  pages:"~2 pages",  tags:["500 books","Series","Status"] },
   { id:"history",    title:"Collection History",        sub:"All cash entries · date-wise · payment mode",           icon:"ti-calendar",      iconBg:"#e8f5ee", color:GREEN,      pages:"~5 pages",  tags:["All entries","Cash/UPI/Bank","Total"] },

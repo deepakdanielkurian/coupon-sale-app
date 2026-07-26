@@ -346,6 +346,84 @@ function addMemberWise(doc, data, startY) {
   return y;
 }
 
+// ── COMMITTEE MEMBERS COLLECTION ──────────────────────────────
+function addCommitteeReport(doc, data, startY) {
+  const {books,collections,members} = data;
+  const w = pageW(doc); let y = startY;
+
+  // Only committee members
+  const committee = members.filter(m => (m.label||"committee_member") === "committee_member");
+
+  if (committee.length === 0) {
+    doc.setTextColor(...MUTED); doc.setFontSize(9);
+    doc.text("No committee members found.", 16, y+4);
+    return y + 12;
+  }
+
+  // Compute stats + sort by collected (highest first)
+  const rows = committee.map(m => {
+    const s = getMemberStats(m, books, collections);
+    return { m, s };
+  }).sort((a,b)=> b.s.totalCollected - a.s.totalCollected);
+
+  // Totals (committee only)
+  const totBooks     = rows.reduce((sum,r)=>sum + r.s.memberBooks.length, 0);
+  const totCollected = rows.reduce((sum,r)=>sum + r.s.totalCollected, 0);
+  const totPending   = rows.reduce((sum,r)=>sum + r.s.totalPending, 0);
+  const totSold      = rows.reduce((sum,r)=>sum + r.s.soldTickets, 0);
+
+  // Grand box
+  doc.setFillColor(...RED); doc.roundedRect(14,y,w-28,22,3,3,"F");
+  doc.setTextColor(...GOLD); doc.setFontSize(8); doc.setFont("helvetica","normal");
+  doc.text("Total collected by committee members",20,y+8);
+  doc.setFontSize(17); doc.setFont("helvetica","bold");
+  doc.text(fmt(totCollected),20,y+18);
+  doc.setFontSize(8); doc.setFont("helvetica","normal");
+  doc.text(`${committee.length} members - ${totSold} tickets sold`,w-20,y+18,{align:"right"});
+  y+=28;
+
+  const bw=(w-28-6)/3;
+  statBox(doc,14,y,bw,"Committee members",committee.length);
+  statBox(doc,14+bw+3,y,bw,"Books held",totBooks,GREEN);
+  statBox(doc,14+(bw+3)*2,y,bw,"Pending to collect",fmt(totPending),AMBER);
+  y+=26;
+
+  y = secTitle(doc,"Committee member collections",y);
+
+  const body = rows.map(({m,s})=>{
+    const status = s.memberBooks.length===0 ? "No books"
+                 : s.totalPending===0 && s.totalCollected>0 ? "Complete"
+                 : s.totalCollected>0 ? "Ongoing" : "Not started";
+    return [
+      `${m.firstName} ${m.lastName}`,
+      m.phone || "-",
+      s.memberBooks.length,
+      `${s.soldTickets}/${s.totalTickets}`,
+      fmt(s.totalCollected),
+      fmt(s.totalPending),
+      status,
+    ];
+  });
+  // Total row
+  body.push(["TOTAL","",totBooks,`${totSold}`,fmt(totCollected),fmt(totPending),""]);
+
+  autoTable(doc,{
+    startY:y, ...TABLE_STYLES,
+    styles:{ ...TABLE_STYLES.styles, fontSize:9, cellPadding:3 },
+    headStyles:{ ...TABLE_STYLES.headStyles, fontSize:8.5 },
+    head:[["Committee member","Phone","Books","Tickets","Collected","Pending","Status"]],
+    body,
+    columnStyles:{ 0:{fontStyle:"bold",fontSize:10}, 4:{textColor:GREEN}, 5:{textColor:AMBER} },
+    didParseCell:(hd)=>{
+      if (hd.section==="body" && hd.row.raw[0]==="TOTAL") {
+        hd.cell.styles.fontStyle = "bold";
+        hd.cell.styles.fillColor = [243,229,245];
+      }
+    },
+  });
+  return doc.lastAutoTable.finalY + 10;
+}
+
 // ── 4. PENDING ────────────────────────────────────────────────
 function addPending(doc, data, startY) {
   const {books,collections,members} = data;
@@ -491,6 +569,7 @@ export function generateCombinedPDF(selectedIds, data) {
     summary:   { title:"Summary Report",              fn:addSummary,   subtitle:"Grand total & all collections overview" },
     coupon:    { title:"Coupon Sale Report",           fn:addCouponSale,subtitle:"Book-wise ticket ranges & collections" },
     member:    { title:"Member-wise Report",           fn:addMemberWise,subtitle:"Individual member books & payment history" },
+    committee: { title:"Committee Members Report",     fn:addCommitteeReport, subtitle:"Collections by committee members only" },
     pending:   { title:"Pending / Defaulters Report",  fn:addPending,   subtitle:"Members with outstanding balance" },
     inventory: { title:"Book Inventory Report",        fn:addInventory, subtitle:"All 500 books — A/B/C series" },
     history:   { title:"Collection History Report",    fn:addHistory,   subtitle:"All payment entries chronologically" },
