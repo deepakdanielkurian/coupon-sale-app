@@ -180,18 +180,18 @@ function addSummary(doc, data, startY) {
     }
   });
 
-  // 2. Common-only buyers (no member match) — after the collecting members
+  // 2. Zero-collection members (have books, collected nothing)
+  zeroCollectors.forEach(({m,s})=>{
+    memRows.push([`${m.firstName} ${m.lastName}`, s.memberBooks.length, `${s.soldTickets}/${s.totalTickets}`, fmt(s.totalCollected), fmt(s.totalPending), "Not started"]);
+  });
+
+  // 3. Common-only buyers (no member match) — last
   const commonOnly = Object.entries(commonAgg)
     .filter(([key]) => !usedCommonKeys.has(key))
     .map(([,v]) => v)
     .sort((a,b)=> b.amount - a.amount);
   commonOnly.forEach(cb=>{
     memRows.push([cb.displayName, `Common book (${cb.bookNo})`, `${cb.tickets}/${cb.tickets}`, fmt(cb.amount), fmt(0), "Complete"]);
-  });
-
-  // 3. Zero-collection members last (have books, collected nothing)
-  zeroCollectors.forEach(({m,s})=>{
-    memRows.push([`${m.firstName} ${m.lastName}`, s.memberBooks.length, `${s.soldTickets}/${s.totalTickets}`, fmt(s.totalCollected), fmt(s.totalPending), "Not started"]);
   });
 
   autoTable(doc,{
@@ -218,14 +218,14 @@ function addSummary(doc, data, startY) {
   // ── OUR SHAREHOLDERS (recognition list — sits right under the common section) ──
   if (shareholders.length > 0) {
     if (yEnd > 225) { doc.addPage(); yEnd = 20; }
-    yEnd = secTitle(doc, "With Gratitude — Our Shareholders", yEnd);
+    yEnd = secTitle(doc, "With Gratitude — Our Ticket Supporters", yEnd);
 
-    doc.setTextColor(...MUTED); doc.setFontSize(7.5); doc.setFont("helvetica","italic");
+    doc.setTextColor(...MUTED); doc.setFontSize(8.5); doc.setFont("helvetica","italic");
     doc.text(
-      "We gratefully acknowledge our shareholders below, who supported the Mega Lucky Draw 2026 by taking tickets through our Ticket Promoters. These names were kindly shared with us by our Ticket Promoters so that each shareholder's participation is recorded and remembered with appreciation. If any shareholder's name is missing, it can be added \u2014 please inform us through your Ticket Promoter.",
+      "We gratefully acknowledge our Ticket Supporters below, who supported the Mega Lucky Draw 2026 by taking tickets through our Ticket Promoters. These names were kindly shared with us by our Ticket Promoters so that each supporter's participation is recorded and remembered with appreciation. If any name is missing, it can be added \u2014 please inform us through your Ticket Promoter.",
       14, yEnd, { maxWidth: w-28 }
     );
-    yEnd += 15;
+    yEnd += 17;
 
     const shRows = [...shareholders]
       .sort((a,b)=>(parseInt(b.amount)||0)-(parseInt(a.amount)||0))
@@ -237,26 +237,15 @@ function addSummary(doc, data, startY) {
         s.date || "\u2014",
       ]);
 
-    const shTickets = shareholders.reduce((sum,s)=>sum+(parseInt(s.tickets)||0),0);
-    const shAmount  = shareholders.reduce((sum,s)=>sum+(parseInt(s.amount)||0),0);
-    shRows.push(["TOTAL", `${shTickets}`, "", fmt(shAmount), ""]);
-
     autoTable(doc,{
       startY:yEnd, ...TABLE_STYLES,
-      styles:{ ...TABLE_STYLES.styles, fontSize:9, cellPadding:3 },
-      headStyles:{ ...TABLE_STYLES.headStyles, fillColor:[106,27,154], fontSize:8.5 },
-      head:[["Shareholder","Tickets taken","Through (seller)","Amount","Date"]],
+      styles:{ ...TABLE_STYLES.styles, fontSize:10, cellPadding:3.5 },
+      headStyles:{ ...TABLE_STYLES.headStyles, fillColor:[106,27,154], fontSize:9.5 },
+      head:[["Ticket Supporter","Tickets taken","Through (seller)","Amount","Date"]],
       body:shRows,
-      columnStyles:{ 0:{fontStyle:"bold"}, 3:{textColor:[74,20,140]} },
+      columnStyles:{ 0:{fontStyle:"bold",fontSize:11}, 3:{textColor:[74,20,140]} },
       didParseCell:(hd)=>{
-        if (hd.section==="body") {
-          hd.cell.styles.fillColor = [250,245,252];
-          if (hd.row.raw[0]==="TOTAL") {
-            hd.cell.styles.fontStyle = "bold";
-            hd.cell.styles.fillColor = [243,229,245];
-            hd.cell.styles.textColor = [74,20,140];
-          }
-        }
+        if (hd.section==="body") hd.cell.styles.fillColor = [250,245,252];
       },
     });
     yEnd = doc.lastAutoTable.finalY + 10;

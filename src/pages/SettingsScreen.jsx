@@ -251,7 +251,7 @@ export default function SettingsScreen({ onSubScreen }) {
         <Section title="Admin tools">
           <Row icon="ti-activity"         iconBg="#f3e5f5" iconColor="#6a1b9a" label="Activity log"    sub="All actions by all users"       badge={`${logs?.length||0}`} onClick={()=>onSubScreen("logs")}/>
           <Row icon="ti-send" iconBg="#e8f5ee" iconColor={GREEN} label="Remittance to treasurer" sub="Record & view summary" onClick={()=>onSubScreen("remittance")}/>
-          <Row icon="ti-users-group" iconBg="#f3e5f5" iconColor="#4a148c" label="Ticket holders" sub="Display-only list for the report" badge={`${shareholders?.length||0}`} onClick={()=>onSubScreen("shareholders")}/>
+          <Row icon="ti-users-group" iconBg="#f3e5f5" iconColor="#4a148c" label="Ticket Supporters" sub="Recognition list for the report" badge={`${shareholders?.length||0}`} onClick={()=>onSubScreen("shareholders")}/>
           <Row icon="ti-database-export"  iconBg="#e3f2fd" iconColor="#1565c0" label="Backup & export"           sub="Save & download data snapshots"                     onClick={()=>onSubScreen("backup")}/>
         </Section>
       )}

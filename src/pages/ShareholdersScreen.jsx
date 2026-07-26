@@ -56,7 +56,7 @@ export default function ShareholdersScreen({ onBack }) {
           </button>
         )}
         <div style={{ flex:1 }}>
-          <div style={{ color:"#fff", fontSize:15, fontWeight:700 }}>Ticket holders</div>
+          <div style={{ color:"#fff", fontSize:15, fontWeight:700 }}>Ticket Supporters</div>
           <div style={{ color:"rgba(255,255,255,0.65)", fontSize:10, marginTop:1 }}>Display-only list · not part of accounts</div>
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function ShareholdersScreen({ onBack }) {
         {canManage && (
           <button onClick={()=>{ setEditing(null); setView("form"); }}
             style={{ width:"100%", background:`linear-gradient(135deg,${PURPLE},#6a1b9a)`, color:"#fff", border:"none", borderRadius:10, padding:"12px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:10 }}>
-            <i className="ti ti-user-plus" style={{ fontSize:16 }}/>Add ticket holder
+            <i className="ti ti-user-plus" style={{ fontSize:16 }}/>Add Ticket Supporter
           </button>
         )}
 
@@ -108,7 +108,7 @@ export default function ShareholdersScreen({ onBack }) {
           <div style={{ textAlign:"center", color:"#bbb", padding:"36px 20px" }}>
             <i className="ti ti-users" style={{ fontSize:38, display:"block", marginBottom:9, opacity:0.4 }}/>
             <div style={{ fontSize:12 }}>
-              {shareholders.length===0 ? "No ticket holders added yet." : `No match for "${search}"`}
+              {shareholders.length===0 ? "No Ticket Supporters added yet." : `No match for "${search}"`}
             </div>
           </div>
         ) : filtered.map(s => (
@@ -177,7 +177,7 @@ function ShareholderForm({ existing, members, onSave, onCancel }) {
 
   function validate() {
     const e = {};
-    if (!name.trim())            e.name    = "Enter the holder's name";
+    if (!name.trim())            e.name    = "Enter the supporter's name";
     if (!tickets || t <= 0)      e.tickets = "Enter ticket count";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -204,7 +204,7 @@ function ShareholderForm({ existing, members, onSave, onCancel }) {
           <i className="ti ti-arrow-left"/>
         </button>
         <div>
-          <div style={{ color:"#fff", fontSize:15, fontWeight:700 }}>{existing ? "Edit" : "Add"} ticket holder</div>
+          <div style={{ color:"#fff", fontSize:15, fontWeight:700 }}>{existing ? "Edit" : "Add"} Ticket Supporter</div>
           <div style={{ color:"rgba(255,255,255,0.65)", fontSize:10, marginTop:1 }}>For display only · not counted in accounts</div>
         </div>
       </div>
@@ -212,9 +212,9 @@ function ShareholderForm({ existing, members, onSave, onCancel }) {
       <div style={{ background:"#f5f7f5", flex:1, overflowY:"auto", padding:"12px", minHeight:0 }}>
 
         {/* Name */}
-        <Field label="Holder name *" error={errors.name}>
+        <Field label="Supporter name *" error={errors.name}>
           <input value={name} onChange={e=>{ setName(e.target.value); setErrors(v=>({...v,name:""})); }}
-            placeholder="Person who took the tickets"
+            placeholder="Name of the ticket supporter"
             style={inp(errors.name, name)}/>
         </Field>
 
@@ -284,7 +284,7 @@ function ShareholderForm({ existing, members, onSave, onCancel }) {
 
         <button onClick={handleSubmit} disabled={saving}
           style={{ width:"100%", background:saving?"#ccc":`linear-gradient(135deg,${PURPLE},#6a1b9a)`, color:"#fff", border:"none", borderRadius:10, padding:"12px", fontSize:13, fontWeight:700, cursor:saving?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:8 }}>
-          <i className="ti ti-check" style={{ fontSize:15 }}/>{saving ? "Saving..." : existing ? "Save changes" : "Add ticket holder"}
+          <i className="ti ti-check" style={{ fontSize:15 }}/>{saving ? "Saving..." : existing ? "Save changes" : "Add Ticket Supporter"}
         </button>
         <button onClick={onCancel}
           style={{ width:"100%", background:"#fff", color:"#888", border:"1px solid #e0e0e0", borderRadius:10, padding:"11px", fontSize:12, cursor:"pointer" }}>

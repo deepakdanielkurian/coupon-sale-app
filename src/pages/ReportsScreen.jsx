@@ -133,18 +133,7 @@ function ReportPreview({ reportId, data }) {
           }
         });
 
-        // Common-only buyers
-        Object.entries(commonAgg).filter(([k])=>!used.has(k)).map(([,v])=>v).sort((a,b)=>b.amount-a.amount).forEach(cb=>{
-          rows.push(
-            <div key={"co-"+cb.displayName} style={{ background:"#f3e5f5",borderRadius:8,border:"1px solid #e1bee7",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-              <div style={{ width:28,height:28,borderRadius:"50%",background:"#4a148c",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff",flexShrink:0 }}>C</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{cb.displayName}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>Common book ({cb.bookNo}) · {cb.tickets} tickets</div></div>
-              <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(cb.amount)}</div>
-            </div>
-          );
-        });
-
-        // Zero-collection members last
+        // Zero-collection members
         zeroColl.forEach(({m,s})=>{
           rows.push(
             <div key={"z-"+m.id} style={{ background:"#fff",borderRadius:8,border:"1px solid #eee",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8,opacity:0.75 }}>
@@ -154,37 +143,40 @@ function ReportPreview({ reportId, data }) {
             </div>
           );
         });
+
+        // Common-only buyers last
+        Object.entries(commonAgg).filter(([k])=>!used.has(k)).map(([,v])=>v).sort((a,b)=>b.amount-a.amount).forEach(cb=>{
+          rows.push(
+            <div key={"co-"+cb.displayName} style={{ background:"#f3e5f5",borderRadius:8,border:"1px solid #e1bee7",padding:"7px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
+              <div style={{ width:28,height:28,borderRadius:"50%",background:"#4a148c",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff",flexShrink:0 }}>C</div>
+              <div style={{ flex:1 }}><div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{cb.displayName}</div><div style={{ fontSize:9,color:"#7b1fa2" }}>Common book ({cb.bookNo}) · {cb.tickets} tickets</div></div>
+              <div style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>{fmt(cb.amount)}</div>
+            </div>
+          );
+        });
         return rows;
       })()}
       {/* Our Shareholders — recognition list, right under the common section */}
       {shareholders.length>0 && (
         <>
-          <div style={{ marginTop:12 }}><SectionLabel>With Gratitude — Our Shareholders</SectionLabel></div>
-          <div style={{ background:"#f3e5f5",border:"1px solid #e1bee7",borderRadius:8,padding:"9px 11px",marginBottom:8,fontSize:10,color:"#4a148c",lineHeight:1.6 }}>
-            We gratefully acknowledge our shareholders below, who supported the Mega Lucky Draw 2026 by taking tickets through our Ticket Promoters. These names were kindly shared with us by our Ticket Promoters so that each shareholder's participation is recorded and remembered with appreciation. If any shareholder's name is missing, it can be added — please inform us through your Ticket Promoter.
+          <div style={{ marginTop:12 }}><SectionLabel>With Gratitude — Our Ticket Supporters</SectionLabel></div>
+          <div style={{ background:"#f3e5f5",border:"1px solid #e1bee7",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:11.5,color:"#4a148c",lineHeight:1.6 }}>
+            We gratefully acknowledge our Ticket Supporters below, who supported the Mega Lucky Draw 2026 by taking tickets through our Ticket Promoters. These names were kindly shared with us by our Ticket Promoters so that each supporter's participation is recorded and remembered with appreciation. If any name is missing, it can be added — please inform us through your Ticket Promoter.
           </div>
           {[...shareholders].sort((a,b)=>(parseInt(b.amount)||0)-(parseInt(a.amount)||0)).map(s=>(
-            <div key={s.id} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0e6f5",padding:"8px 10px",marginBottom:5,display:"flex",alignItems:"center",gap:8 }}>
-              <div style={{ width:28,height:28,borderRadius:"50%",background:"#f3e5f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#4a148c",flexShrink:0 }}>
+            <div key={s.id} style={{ background:"#fafafa",borderRadius:8,border:"1px solid #f0e6f5",padding:"9px 11px",marginBottom:5,display:"flex",alignItems:"center",gap:9 }}>
+              <div style={{ width:32,height:32,borderRadius:"50%",background:"#f3e5f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#4a148c",flexShrink:0 }}>
                 {initials({firstName:s.name,lastName:""})}
               </div>
               <div style={{ flex:1,minWidth:0 }}>
-                <div style={{ fontSize:13,fontWeight:700,color:"#1a1a1a" }}>{s.name}</div>
-                <div style={{ fontSize:9,color:"#888" }}>
+                <div style={{ fontSize:15,fontWeight:700,color:"#1a1a1a" }}>{s.name}</div>
+                <div style={{ fontSize:10,color:"#888" }}>
                   {parseInt(s.tickets)||0} ticket{(parseInt(s.tickets)||0)!=1?"s":""} taken{s.fromName?` · through ${s.fromName}`:""}
                 </div>
               </div>
-              <div style={{ fontSize:12,fontWeight:700,color:"#4a148c" }}>{fmt(parseInt(s.amount)||0)}</div>
+              <div style={{ fontSize:14,fontWeight:700,color:"#4a148c" }}>{fmt(parseInt(s.amount)||0)}</div>
             </div>
           ))}
-          <div style={{ background:"#f3e5f5",borderRadius:8,padding:"8px 11px",display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:3,marginBottom:6 }}>
-            <span style={{ fontSize:11,fontWeight:700,color:"#4a148c" }}>
-              Total ({shareholders.reduce((s,x)=>s+(parseInt(x.tickets)||0),0)} tickets taken)
-            </span>
-            <span style={{ fontSize:13,fontWeight:700,color:"#4a148c" }}>
-              {fmt(shareholders.reduce((s,x)=>s+(parseInt(x.amount)||0),0))}
-            </span>
-          </div>
         </>
       )}
 
