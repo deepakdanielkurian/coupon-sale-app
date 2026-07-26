@@ -396,7 +396,6 @@ function addCommitteeReport(doc, data, startY) {
                  : s.totalCollected>0 ? "Ongoing" : "Not started";
     return [
       `${m.firstName} ${m.lastName}`,
-      m.phone || "-",
       s.memberBooks.length,
       `${s.soldTickets}/${s.totalTickets}`,
       fmt(s.totalCollected),
@@ -405,15 +404,15 @@ function addCommitteeReport(doc, data, startY) {
     ];
   });
   // Total row
-  body.push(["TOTAL","",totBooks,`${totSold}`,fmt(totCollected),fmt(totPending),""]);
+  body.push(["TOTAL",totBooks,`${totSold}`,fmt(totCollected),fmt(totPending),""]);
 
   autoTable(doc,{
     startY:y, ...TABLE_STYLES,
     styles:{ ...TABLE_STYLES.styles, fontSize:9, cellPadding:3 },
     headStyles:{ ...TABLE_STYLES.headStyles, fontSize:8.5 },
-    head:[["Committee member","Phone","Books","Tickets","Collected","Pending","Status"]],
+    head:[["Committee member","Books","Tickets","Collected","Pending","Status"]],
     body,
-    columnStyles:{ 0:{fontStyle:"bold",fontSize:10}, 4:{textColor:GREEN}, 5:{textColor:AMBER} },
+    columnStyles:{ 0:{fontStyle:"bold",fontSize:10}, 3:{textColor:GREEN}, 4:{textColor:AMBER} },
     didParseCell:(hd)=>{
       if (hd.section==="body" && hd.row.raw[0]==="TOTAL") {
         hd.cell.styles.fontStyle = "bold";
