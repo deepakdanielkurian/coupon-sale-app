@@ -36,6 +36,7 @@ export default function ShareholdersScreen({ onBack }) {
     return <ShareholderForm
       existing={editing}
       members={members}
+      shareholders={shareholders}
       onCancel={()=>{ setView("list"); setEditing(null); }}
       onSave={async form=>{
         if (editing) await updateShareholder(editing.id, form);
@@ -152,7 +153,7 @@ export default function ShareholdersScreen({ onBack }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-function ShareholderForm({ existing, members, onSave, onCancel }) {
+function ShareholderForm({ existing, members, shareholders=[], onSave, onCancel }) {
   const [name,     setName]     = useState(existing?.name || "");
   const [tickets,  setTickets]  = useState(existing?.tickets ? String(existing.tickets) : "");
   const [amount,   setAmount]   = useState(existing?.amount ? String(existing.amount) : "");
@@ -161,7 +162,23 @@ function ShareholderForm({ existing, members, onSave, onCancel }) {
   const [notes,    setNotes]    = useState(existing?.notes || "");
   const [saving,   setSaving]   = useState(false);
   const [errors,   setErrors]   = useState({});
-  const [pickSeller, setPickSeller] = useState(false);
+  const [showNameSug, setShowNameSug]   = useState(false);
+  const [showFromSug, setShowFromSug]   = useState(false);
+
+  // Unique already-entered supporter names (for autocomplete, avoid repetition)
+  const pastNames = [...new Set(shareholders.map(s=>(s.name||"").trim()).filter(Boolean))];
+  const nameSug = name.trim()
+    ? pastNames.filter(n => n.toLowerCase().includes(name.trim().toLowerCase()) && n.toLowerCase()!==name.trim().toLowerCase()).slice(0,6)
+    : [];
+
+  // Seller suggestions = members + any past "fromName" values, matched loosely by any word
+  const sellerPool = [...new Set([
+    ...members.map(m=>`${m.firstName} ${m.lastName}`.trim()),
+    ...shareholders.map(s=>(s.fromName||"").trim()),
+  ].filter(Boolean))];
+  const fromSug = fromName.trim()
+    ? sellerPool.filter(n => n.toLowerCase().includes(fromName.trim().toLowerCase()) && n.toLowerCase()!==fromName.trim().toLowerCase()).slice(0,6)
+    : [];
 
   const t = parseInt(tickets) || 0;
 
@@ -211,11 +228,28 @@ function ShareholderForm({ existing, members, onSave, onCancel }) {
 
       <div style={{ background:"#f5f7f5", flex:1, overflowY:"auto", padding:"12px", minHeight:0 }}>
 
-        {/* Name */}
+        {/* Name — with autocomplete from already-entered supporters */}
         <Field label="Supporter name *" error={errors.name}>
-          <input value={name} onChange={e=>{ setName(e.target.value); setErrors(v=>({...v,name:""})); }}
-            placeholder="Name of the ticket supporter"
-            style={inp(errors.name, name)}/>
+          <div style={{ position:"relative" }}>
+            <input value={name}
+              onChange={e=>{ setName(e.target.value); setErrors(v=>({...v,name:""})); setShowNameSug(true); }}
+              onFocus={()=>setShowNameSug(true)}
+              onBlur={()=>setTimeout(()=>setShowNameSug(false),150)}
+              placeholder="Start typing the supporter's name..."
+              style={inp(errors.name, name)}/>
+            {showNameSug && nameSug.length>0 && (
+              <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:20, marginTop:3, maxHeight:180, overflowY:"auto", border:"1px solid #e1bee7", borderRadius:8, background:"#fff", boxShadow:"0 4px 12px rgba(0,0,0,0.08)" }}>
+                <div style={{ fontSize:9, color:"#aaa", padding:"5px 10px 3px" }}>Already entered — tap to reuse</div>
+                {nameSug.map(n=>(
+                  <div key={n} onMouseDown={()=>{ setName(n); setShowNameSug(false); }}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderTop:"0.5px solid #f5f5f5", cursor:"pointer" }}>
+                    <i className="ti ti-user" style={{ fontSize:13, color:PURPLE }}/>
+                    <span style={{ fontSize:12, color:"#1a1a1a" }}>{n}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </Field>
 
         {/* Tickets */}
@@ -235,31 +269,27 @@ function ShareholderForm({ existing, members, onSave, onCancel }) {
           </div>
         </Field>
 
-        {/* From whom */}
+        {/* Took tickets from — search as you type (members + past sellers) */}
         <Field label="Took tickets from">
-          <input value={fromName} onChange={e=>setFromName(e.target.value)}
-            placeholder="Seller / member name"
-            style={inp("", fromName)}/>
-          <button onClick={()=>setPickSeller(v=>!v)}
-            style={{ marginTop:5, background:"#fff", border:"1px solid #e0e0e0", color:"#666", borderRadius:7, padding:"5px 10px", fontSize:10, fontWeight:600, cursor:"pointer" }}>
-            <i className="ti ti-users" style={{ fontSize:11, marginRight:4 }}/>
-            {pickSeller ? "Hide member list" : "Pick from members"}
-          </button>
-          {pickSeller && (
-            <div style={{ marginTop:6, maxHeight:180, overflowY:"auto", border:"1px solid #eee", borderRadius:8, background:"#fff" }}>
-              {members.length === 0 && <div style={{ padding:10, fontSize:11, color:"#aaa", textAlign:"center" }}>No members yet</div>}
-              {members.map(m=>(
-                <div key={m.id}
-                  onClick={()=>{ setFromName(`${m.firstName} ${m.lastName}`.trim()); setPickSeller(false); }}
-                  style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", borderBottom:"0.5px solid #f5f5f5", cursor:"pointer" }}>
-                  <div style={{ width:26, height:26, borderRadius:7, background:LABELS[m.label]?.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, color:LABELS[m.label]?.color, flexShrink:0 }}>
-                    {initials(m)}
+          <div style={{ position:"relative" }}>
+            <input value={fromName}
+              onChange={e=>{ setFromName(e.target.value); setShowFromSug(true); }}
+              onFocus={()=>setShowFromSug(true)}
+              onBlur={()=>setTimeout(()=>setShowFromSug(false),150)}
+              placeholder="Type seller name to search..."
+              style={inp("", fromName)}/>
+            {showFromSug && fromSug.length>0 && (
+              <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:20, marginTop:3, maxHeight:200, overflowY:"auto", border:"1px solid #e0e0e0", borderRadius:8, background:"#fff", boxShadow:"0 4px 12px rgba(0,0,0,0.08)" }}>
+                {fromSug.map(n=>(
+                  <div key={n} onMouseDown={()=>{ setFromName(n); setShowFromSug(false); }}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderTop:"0.5px solid #f5f5f5", cursor:"pointer" }}>
+                    <i className="ti ti-user-check" style={{ fontSize:13, color:GREEN }}/>
+                    <span style={{ fontSize:12, color:"#1a1a1a" }}>{n}</span>
                   </div>
-                  <div style={{ fontSize:12, color:"#1a1a1a" }}>{m.firstName} {m.lastName}</div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </Field>
 
         {/* Date */}
