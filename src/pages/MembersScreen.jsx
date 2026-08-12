@@ -405,6 +405,67 @@ function MemberDetail({ member, onEdit, onDeleted }) {
         ))}
       </div>
 
+      {/* Books at a glance — completed vs pending with book numbers */}
+      {stats.memberBooks.length>0 && (()=>{
+        const withStats = stats.memberBooks.map(b=>{
+          const bs = getBookStats(b, collections);
+          return { b, bs };
+        });
+        const isDone = x => x.bs.isComplete || (x.bs.effective>0 && x.bs.totalSold>=x.bs.effective);
+        const completed = withStats.filter(isDone);
+        const pendingB  = withStats.filter(x=> !isDone(x));
+        const totalPendingTickets = pendingB.reduce((s,x)=> s + (x.bs.ticketsPending||0), 0);
+        return (
+          <div style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"11px 12px",marginBottom:10 }}>
+            <div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a",marginBottom:9 }}>Books at a glance</div>
+
+            {/* Completed */}
+            <div style={{ marginBottom:pendingB.length?10:0 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:5 }}>
+                <i className="ti ti-circle-check" style={{ color:GREEN,fontSize:14 }}/>
+                <span style={{ fontSize:11,fontWeight:700,color:GREEN }}>Completed ({completed.length})</span>
+              </div>
+              {completed.length>0 ? (
+                <div style={{ display:"flex",flexWrap:"wrap",gap:5 }}>
+                  {completed.map(({b})=>(
+                    <span key={b.id} style={{ fontSize:11,fontWeight:700,background:"#e8f5ee",color:GREEN,borderRadius:6,padding:"3px 8px" }}>{b.bookNumber}</span>
+                  ))}
+                </div>
+              ) : <div style={{ fontSize:10,color:"#bbb" }}>None yet</div>}
+            </div>
+
+            {/* Pending */}
+            {pendingB.length>0 && (
+              <div style={{ borderTop:"1px solid #f5f5f5",paddingTop:9 }}>
+                <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:5 }}>
+                  <i className="ti ti-clock" style={{ color:"#e65100",fontSize:14 }}/>
+                  <span style={{ fontSize:11,fontWeight:700,color:"#e65100" }}>Pending ({pendingB.length})</span>
+                </div>
+                <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+                  {pendingB.map(({b,bs})=>(
+                    <div key={b.id} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",background:"#fff8f2",borderRadius:6,padding:"5px 9px" }}>
+                      <span style={{ fontSize:11,fontWeight:700,color:"#e65100" }}>{b.bookNumber}</span>
+                      <span style={{ fontSize:10,color:"#888" }}>{bs.totalSold}/{bs.effective} sold · {bs.ticketsPending} left</span>
+                      <span style={{ fontSize:11,fontWeight:700,color:"#e65100" }}>{fmt(bs.pending)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Totals line */}
+            <div style={{ borderTop:"1px solid #f0f0f0",marginTop:9,paddingTop:8,display:"flex",justifyContent:"space-between",fontSize:11 }}>
+              <span style={{ color:"#555" }}>
+                <strong>{stats.memberBooks.length}</strong> books · <strong style={{ color:GREEN }}>{completed.length}</strong> done · <strong style={{ color:"#e65100" }}>{pendingB.length}</strong> pending
+              </span>
+              <span style={{ color:"#555" }}>
+                {totalPendingTickets>0 && <span style={{ color:"#e65100",fontWeight:700 }}>{totalPendingTickets} tickets left</span>}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Payment mode breakdown */}
       <div style={{ background:"#fff",borderRadius:10,border:"1px solid #eee",padding:"10px 12px",marginBottom:10 }}>
         <div style={{ fontSize:11,fontWeight:700,color:"#1a1a1a",marginBottom:8 }}>Payment mode breakdown</div>
